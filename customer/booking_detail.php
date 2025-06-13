@@ -101,9 +101,10 @@ if ($booking['status'] === 'confirmed') {
 }
 
 // Function untuk menentukan jenis pembayaran
-function getPaymentType($amount, $booking, $previous_total = 0) {
+function getPaymentType($amount, $booking, $previous_total = 0)
+{
     $total_after = $previous_total + $amount;
-    
+
     if ($total_after >= $booking['total_amount']) {
         if ($previous_total == 0) {
             return 'Lunas Langsung';
@@ -118,17 +119,18 @@ function getPaymentType($amount, $booking, $previous_total = 0) {
 }
 
 // Function untuk status dalam bahasa Indonesia dengan logika pembayaran baru
-function formatStatusIndonesia($status, $total_paid, $down_payment, $total_amount) {
+function formatStatusIndonesia($status, $total_paid, $down_payment, $total_amount)
+{
     // Jika sudah lunas
     if ($total_paid >= $total_amount) {
         return 'Lunas';
     }
-    
+
     // Jika sudah bayar DP tapi belum lunas
     if ($total_paid >= $down_payment && $total_paid < $total_amount && $status === 'paid') {
         return 'Dibayar (DP)';
     }
-    
+
     $status_indonesia = [
         'pending' => 'Menunggu Konfirmasi',
         'confirmed' => 'Dikonfirmasi',
@@ -137,12 +139,13 @@ function formatStatusIndonesia($status, $total_paid, $down_payment, $total_amoun
         'completed' => 'Selesai',
         'cancelled' => 'Dibatalkan'
     ];
-    
+
     return $status_indonesia[$status] ?? ucfirst($status);
 }
 
 // Determine payment status untuk UI
-function getPaymentStatus($booking, $total_paid) {
+function getPaymentStatus($booking, $total_paid)
+{
     if ($total_paid >= $booking['total_amount']) {
         return [
             'status' => 'fully_paid',
@@ -179,6 +182,7 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -201,7 +205,7 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
             background: linear-gradient(135deg, #ff6b6b, #ffa500);
             color: white;
             padding: 1rem 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .header-container {
@@ -231,7 +235,7 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
             width: 250px;
             height: calc(100vh - 70px);
             background: white;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
             padding: 2rem 0;
         }
 
@@ -289,7 +293,7 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
         .btn-secondary {
@@ -328,7 +332,7 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
         .booking-status {
             display: inline-block;
             padding: 0.5rem 1.5rem;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.2);
             border-radius: 25px;
             font-size: 1rem;
             margin-top: 1rem;
@@ -344,7 +348,7 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
         .card {
             background: white;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
 
@@ -441,7 +445,7 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            background: rgba(255,255,255,0.9);
+            background: rgba(255, 255, 255, 0.9);
             color: #333;
             padding: 0.5rem 1rem;
             border-radius: 25px;
@@ -493,7 +497,7 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
         .payment-option:hover {
             border-color: #ff6b6b;
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
 
         .payment-option-header {
@@ -661,21 +665,22 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
             .sidebar {
                 transform: translateX(-100%);
             }
-            
+
             .main-content {
                 margin-left: 0;
             }
-            
+
             .detail-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .info-grid {
                 grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
+
 <body>
     <!-- Header -->
     <header class="header">
@@ -713,7 +718,8 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
 
         <?php if ($success): ?>
             <div class="alert success">
-                <i class="fas fa-check-circle"></i> Booking berhasil dibuat! Tim kami akan segera menghubungi Anda untuk konfirmasi.
+                <i class="fas fa-check-circle"></i> Booking berhasil dibuat! Tim kami akan segera menghubungi Anda untuk
+                konfirmasi.
             </div>
         <?php endif; ?>
 
@@ -725,7 +731,8 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
             <div>Booking untuk <?php echo htmlspecialchars($booking['package_name']); ?></div>
             <div class="booking-status">
                 <i class="<?php echo $service_icon; ?>"></i>
-                Status: <?php echo formatStatusIndonesia($booking['status'], $total_paid, $booking['down_payment'], $booking['total_amount']); ?>
+                Status:
+                <?php echo formatStatusIndonesia($booking['status'], $total_paid, $booking['down_payment'], $booking['total_amount']); ?>
             </div>
         </div>
 
@@ -743,7 +750,8 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                             <h4><i class="fas fa-calendar"></i> Informasi Event</h4>
                             <div class="info-item">
                                 <span class="info-label">Tanggal Event:</span>
-                                <span class="info-value"><?php echo date('d F Y', strtotime($booking['usage_date'])); ?></span>
+                                <span
+                                    class="info-value"><?php echo date('d F Y', strtotime($booking['usage_date'])); ?></span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Jenis Layanan:</span>
@@ -753,10 +761,11 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                                 </span>
                             </div>
                             <?php if ($booking['venue_address']): ?>
-                            <div class="info-item">
-                                <span class="info-label">Alamat Acara:</span>
-                                <span class="info-value"><?php echo htmlspecialchars($booking['venue_address']); ?></span>
-                            </div>
+                                <div class="info-item">
+                                    <span class="info-label">Alamat Acara:</span>
+                                    <span
+                                        class="info-value"><?php echo htmlspecialchars($booking['venue_address']); ?></span>
+                                </div>
                             <?php endif; ?>
                         </div>
 
@@ -764,7 +773,8 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                             <h4><i class="fas fa-user"></i> Informasi Customer</h4>
                             <div class="info-item">
                                 <span class="info-label">Nama Lengkap:</span>
-                                <span class="info-value"><?php echo htmlspecialchars($booking['customer_name']); ?></span>
+                                <span
+                                    class="info-value"><?php echo htmlspecialchars($booking['customer_name']); ?></span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Email:</span>
@@ -772,48 +782,50 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Telepon:</span>
-                                <span class="info-value"><?php echo htmlspecialchars($booking['phone'] ?: '-'); ?></span>
+                                <span
+                                    class="info-value"><?php echo htmlspecialchars($booking['phone'] ?: '-'); ?></span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Dibuat:</span>
-                                <span class="info-value"><?php echo date('d/m/Y H:i', strtotime($booking['created_at'])); ?></span>
+                                <span
+                                    class="info-value"><?php echo date('d/m/Y H:i', strtotime($booking['created_at'])); ?></span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Special Request -->
                     <?php if ($booking['special_request']): ?>
-                    <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                        <h5><i class="fas fa-comment"></i> Permintaan Khusus</h5>
-                        <p style="margin: 0.5rem 0 0 0; color: #856404;">
-                            <?php echo nl2br(htmlspecialchars($booking['special_request'])); ?>
-                        </p>
-                    </div>
+                        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <h5><i class="fas fa-comment"></i> Permintaan Khusus</h5>
+                            <p style="margin: 0.5rem 0 0 0; color: #856404;">
+                                <?php echo nl2br(htmlspecialchars($booking['special_request'])); ?>
+                            </p>
+                        </div>
                     <?php endif; ?>
 
                     <!-- Package Includes -->
                     <?php if ($booking['package_includes']): ?>
-                    <div class="package-includes">
-                        <h4><i class="fas fa-check-circle"></i> Yang Termasuk dalam Paket</h4>
-                        <ul>
-                            <?php 
-                            $includes = explode(',', $booking['package_includes']);
-                            foreach ($includes as $include): 
-                            ?>
-                                <li><?php echo trim(htmlspecialchars($include)); ?></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
+                        <div class="package-includes">
+                            <h4><i class="fas fa-check-circle"></i> Yang Termasuk dalam Paket</h4>
+                            <ul>
+                                <?php
+                                $includes = explode(',', $booking['package_includes']);
+                                foreach ($includes as $include):
+                                ?>
+                                    <li><?php echo trim(htmlspecialchars($include)); ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
                     <?php endif; ?>
 
                     <!-- Admin Notes -->
                     <?php if ($booking['notes']): ?>
-                    <div style="background: #d1ecf1; padding: 1rem; border-radius: 8px;">
-                        <h5><i class="fas fa-sticky-note"></i> Catatan dari Admin</h5>
-                        <p style="margin: 0.5rem 0 0 0; color: #0c5460;">
-                            <?php echo nl2br(htmlspecialchars($booking['notes'])); ?>
-                        </p>
-                    </div>
+                        <div style="background: #d1ecf1; padding: 1rem; border-radius: 8px;">
+                            <h5><i class="fas fa-sticky-note"></i> Catatan dari Admin</h5>
+                            <p style="margin: 0.5rem 0 0 0; color: #0c5460;">
+                                <?php echo nl2br(htmlspecialchars($booking['notes'])); ?>
+                            </p>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -826,7 +838,8 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                 </div>
                 <div class="card-body">
                     <!-- Payment Status Badge -->
-                    <div class="payment-status-badge" style="background-color: <?php echo $payment_status_info['color']; ?>; color: white;">
+                    <div class="payment-status-badge"
+                        style="background-color: <?php echo $payment_status_info['color']; ?>; color: white;">
                         <i class="<?php echo $payment_status_info['icon']; ?>"></i>
                         <span><?php echo $payment_status_info['text']; ?></span>
                     </div>
@@ -837,20 +850,22 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                             <span class="payment-value"><?php echo formatRupiah($booking['total_amount']); ?></span>
                         </div>
                         <?php if ($booking['down_payment'] > 0): ?>
-                        <div class="payment-item">
-                            <span class="payment-label">DP (Minimum):</span>
-                            <span class="payment-value"><?php echo formatRupiah($booking['down_payment']); ?></span>
-                        </div>
+                            <div class="payment-item">
+                                <span class="payment-label">DP (Minimum):</span>
+                                <span class="payment-value"><?php echo formatRupiah($booking['down_payment']); ?></span>
+                            </div>
                         <?php endif; ?>
                         <div class="payment-item">
                             <span class="payment-label">Sudah Dibayar:</span>
-                            <span class="payment-value" style="color: #28a745;"><?php echo formatRupiah($total_paid); ?></span>
+                            <span class="payment-value"
+                                style="color: #28a745;"><?php echo formatRupiah($total_paid); ?></span>
                         </div>
                         <?php if ($payment_stats['pending_amount'] > 0): ?>
-                        <div class="payment-item">
-                            <span class="payment-label">Menunggu Verifikasi:</span>
-                            <span class="payment-value" style="color: #ffc107;"><?php echo formatRupiah($payment_stats['pending_amount']); ?></span>
-                        </div>
+                            <div class="payment-item">
+                                <span class="payment-label">Menunggu Verifikasi:</span>
+                                <span class="payment-value"
+                                    style="color: #ffc107;"><?php echo formatRupiah($payment_stats['pending_amount']); ?></span>
+                            </div>
                         <?php endif; ?>
                         <div class="payment-item">
                             <span class="payment-label">Sisa Pembayaran:</span>
@@ -859,85 +874,93 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
 
                     <!-- Payment Options -->
                     <?php if ($booking['status'] === 'confirmed' && $remaining_payment > 0): ?>
-                    <div class="payment-actions">
-                        <?php if ($can_pay_dp && $booking['down_payment'] > 0): ?>
-                        <a href="payment.php?booking=<?php echo $booking['id']; ?>&type=dp" class="payment-option">
-                            <div class="payment-option-header">
-                                <span class="payment-option-title">
-                                    <i class="fas fa-credit-card"></i> Bayar DP (Down Payment)
-                                </span>
-                                <span class="payment-option-amount"><?php echo formatRupiah($booking['down_payment']); ?></span>
-                            </div>
-                            <div class="payment-option-desc">
-                                Bayar uang muka untuk mengamankan booking Anda. Sisa dapat dibayar kapan saja sebelum acara.
-                            </div>
-                        </a>
-                        <?php endif; ?>
+                        <div class="payment-actions">
+                            <?php if ($can_pay_dp && $booking['down_payment'] > 0): ?>
+                                <a href="payment.php?booking=<?php echo $booking['id']; ?>&type=dp" class="payment-option">
+                                    <div class="payment-option-header">
+                                        <span class="payment-option-title">
+                                            <i class="fas fa-credit-card"></i> Bayar DP (Down Payment)
+                                        </span>
+                                        <span
+                                            class="payment-option-amount"><?php echo formatRupiah($booking['down_payment']); ?></span>
+                                    </div>
+                                    <div class="payment-option-desc">
+                                        Bayar uang muka untuk mengamankan booking Anda. Sisa dapat dibayar kapan saja sebelum
+                                        acara.
+                                    </div>
+                                </a>
+                            <?php endif; ?>
 
-                        <?php if ($can_pay_full): ?>
-                        <a href="payment.php?booking=<?php echo $booking['id']; ?>&type=full" class="payment-option">
-                            <div class="payment-option-header">
-                                <span class="payment-option-title">
-                                    <i class="fas fa-star"></i> Bayar Lunas Langsung
-                                </span>
-                                <span class="payment-option-amount"><?php echo formatRupiah($remaining_payment); ?></span>
-                            </div>
-                            <div class="payment-option-desc">
-                                Bayar seluruh tagihan sekaligus tanpa perlu DP. Lebih praktis dan booking langsung aman!
-                            </div>
-                        </a>
-                        <?php endif; ?>
+                            <?php if ($can_pay_full): ?>
+                                <a href="payment.php?booking=<?php echo $booking['id']; ?>&type=full" class="payment-option">
+                                    <div class="payment-option-header">
+                                        <span class="payment-option-title">
+                                            <i class="fas fa-star"></i> Bayar Lunas Langsung
+                                        </span>
+                                        <span
+                                            class="payment-option-amount"><?php echo formatRupiah($remaining_payment); ?></span>
+                                    </div>
+                                    <div class="payment-option-desc">
+                                        Bayar seluruh tagihan sekaligus tanpa perlu DP. Lebih praktis dan booking langsung aman!
+                                    </div>
+                                </a>
+                            <?php endif; ?>
 
-                        <?php if ($can_pay_remaining): ?>
-                        <a href="payment.php?booking=<?php echo $booking['id']; ?>&type=remaining" class="payment-option">
-                            <div class="payment-option-header">
-                                <span class="payment-option-title">
-                                    <i class="fas fa-check-circle"></i> Lunasi Pembayaran
-                                </span>
-                                <span class="payment-option-amount"><?php echo formatRupiah($remaining_payment); ?></span>
-                            </div>
-                            <div class="payment-option-desc">
-                                DP sudah dibayar. Lunasi sisa pembayaran untuk menyelesaikan transaksi.
-                            </div>
-                        </a>
-                        <?php endif; ?>
-                    </div>
+                            <?php if ($can_pay_remaining): ?>
+                                <a href="payment.php?booking=<?php echo $booking['id']; ?>&type=remaining"
+                                    class="payment-option">
+                                    <div class="payment-option-header">
+                                        <span class="payment-option-title">
+                                            <i class="fas fa-check-circle"></i> Lunasi Pembayaran
+                                        </span>
+                                        <span
+                                            class="payment-option-amount"><?php echo formatRupiah($remaining_payment); ?></span>
+                                    </div>
+                                    <div class="payment-option-desc">
+                                        DP sudah dibayar. Lunasi sisa pembayaran untuk menyelesaikan transaksi.
+                                    </div>
+                                </a>
+                            <?php endif; ?>
+                        </div>
                     <?php endif; ?>
 
                     <!-- Payment Complete Message -->
                     <?php if ($remaining_payment <= 0): ?>
-                    <div class="alert success">
-                        <i class="fas fa-check-circle"></i> 
-                        <strong>Pembayaran Lunas!</strong><br>
-                        Terima kasih! Pembayaran Anda telah lunas. Tim kami akan menghubungi Anda untuk persiapan acara.
-                    </div>
+                        <div class="alert success">
+                            <i class="fas fa-check-circle"></i>
+                            <strong>Pembayaran Lunas!</strong><br>
+                            Terima kasih! Pembayaran Anda telah lunas. Tim kami akan menghubungi Anda untuk persiapan acara.
+                        </div>
                     <?php endif; ?>
 
                     <!-- Pending Payment Alert -->
                     <?php if ($payment_stats['pending_count'] > 0): ?>
-                    <div class="alert warning">
-                        <i class="fas fa-clock"></i> 
-                        <strong>Pembayaran Sedang Diverifikasi</strong><br>
-                        <?php echo $payment_stats['pending_count']; ?> pembayaran senilai <?php echo formatRupiah($payment_stats['pending_amount']); ?> sedang menunggu verifikasi admin.
-                    </div>
+                        <div class="alert warning">
+                            <i class="fas fa-clock"></i>
+                            <strong>Pembayaran Sedang Diverifikasi</strong><br>
+                            <?php echo $payment_stats['pending_count']; ?> pembayaran senilai
+                            <?php echo formatRupiah($payment_stats['pending_amount']); ?> sedang menunggu verifikasi admin.
+                        </div>
                     <?php endif; ?>
 
                     <!-- Booking Status Message -->
                     <?php if ($booking['status'] === 'pending'): ?>
-                    <div class="alert info">
-                        <i class="fas fa-info-circle"></i> 
-                        <strong>Menunggu Konfirmasi</strong><br>
-                        Booking Anda sedang menunggu konfirmasi dari admin. Pembayaran akan tersedia setelah booking dikonfirmasi.
-                    </div>
+                        <div class="alert info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Menunggu Konfirmasi</strong><br>
+                            Booking Anda sedang menunggu konfirmasi dari admin. Pembayaran akan tersedia setelah booking
+                            dikonfirmasi.
+                        </div>
                     <?php endif; ?>
 
                     <!-- Cancel Booking Option -->
                     <?php if ($booking['status'] === 'pending'): ?>
-                    <div style="margin-top: 1rem;">
-                        <button onclick="cancelBooking(<?php echo $booking['id']; ?>)" class="btn btn-secondary" style="width: 100%;">
-                            <i class="fas fa-times"></i> Batalkan Booking
-                        </button>
-                    </div>
+                        <div style="margin-top: 1rem;">
+                            <button onclick="cancelBooking(<?php echo $booking['id']; ?>)" class="btn btn-secondary"
+                                style="width: 100%;">
+                                <i class="fas fa-times"></i> Batalkan Booking
+                            </button>
+                        </div>
                     <?php endif; ?>
 
                     <!-- Status Timeline -->
@@ -952,34 +975,44 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                                     <p><?php echo date('d/m/Y H:i', strtotime($booking['created_at'])); ?></p>
                                 </div>
                             </div>
-                            <div class="timeline-item <?php echo in_array($booking['status'], ['confirmed', 'paid', 'in_progress', 'completed']) ? 'completed' : 'current'; ?>">
+                            <div
+                                class="timeline-item <?php echo in_array($booking['status'], ['confirmed', 'paid', 'in_progress', 'completed']) ? 'completed' : 'current'; ?>">
                                 <div class="timeline-content">
                                     <h5>Konfirmasi Admin</h5>
-                                    <p><?php echo $booking['status'] === 'pending' ? 'Menunggu konfirmasi admin' : 'Dikonfirmasi oleh admin'; ?></p>
+                                    <p><?php echo $booking['status'] === 'pending' ? 'Menunggu konfirmasi admin' : 'Dikonfirmasi oleh admin'; ?>
+                                    </p>
                                 </div>
                             </div>
-                            <div class="timeline-item <?php echo ($total_paid >= $booking['down_payment']) ? 'completed' : ($booking['status'] === 'confirmed' ? 'current' : ''); ?>">
+                            <div
+                                class="timeline-item <?php echo ($total_paid >= $booking['down_payment']) ? 'completed' : ($booking['status'] === 'confirmed' ? 'current' : ''); ?>">
                                 <div class="timeline-content">
                                     <h5>Pembayaran DP</h5>
-                                    <p><?php echo ($total_paid >= $booking['down_payment']) ? 'DP telah dibayar' : 'Menunggu pembayaran DP'; ?></p>
+                                    <p><?php echo ($total_paid >= $booking['down_payment']) ? 'DP telah dibayar' : 'Menunggu pembayaran DP'; ?>
+                                    </p>
                                 </div>
                             </div>
-                            <div class="timeline-item <?php echo ($remaining_payment <= 0) ? 'completed' : (($total_paid >= $booking['down_payment']) ? 'current' : ''); ?>">
+                            <div
+                                class="timeline-item <?php echo ($remaining_payment <= 0) ? 'completed' : (($total_paid >= $booking['down_payment']) ? 'current' : ''); ?>">
                                 <div class="timeline-content">
                                     <h5>Pelunasan</h5>
-                                    <p><?php echo ($remaining_payment <= 0) ? 'Pembayaran lunas' : 'Menunggu pelunasan'; ?></p>
+                                    <p><?php echo ($remaining_payment <= 0) ? 'Pembayaran lunas' : 'Menunggu pelunasan'; ?>
+                                    </p>
                                 </div>
                             </div>
-                            <div class="timeline-item <?php echo in_array($booking['status'], ['in_progress', 'completed']) ? 'completed' : (($remaining_payment <= 0) ? 'current' : ''); ?>">
+                            <div
+                                class="timeline-item <?php echo in_array($booking['status'], ['in_progress', 'completed']) ? 'completed' : (($remaining_payment <= 0) ? 'current' : ''); ?>">
                                 <div class="timeline-content">
                                     <h5>Persiapan Event</h5>
-                                    <p><?php echo in_array($booking['status'], ['in_progress', 'completed']) ? 'Event sedang/telah berlangsung' : 'Menunggu hari H'; ?></p>
+                                    <p><?php echo in_array($booking['status'], ['in_progress', 'completed']) ? 'Event sedang/telah berlangsung' : 'Menunggu hari H'; ?>
+                                    </p>
                                 </div>
                             </div>
-                            <div class="timeline-item <?php echo $booking['status'] === 'completed' ? 'completed' : ''; ?>">
+                            <div
+                                class="timeline-item <?php echo $booking['status'] === 'completed' ? 'completed' : ''; ?>">
                                 <div class="timeline-content">
                                     <h5>Event Selesai</h5>
-                                    <p><?php echo $booking['status'] === 'completed' ? 'Event telah selesai dilaksanakan' : 'Menunggu pelaksanaan event'; ?></p>
+                                    <p><?php echo $booking['status'] === 'completed' ? 'Event telah selesai dilaksanakan' : 'Menunggu pelaksanaan event'; ?>
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -990,68 +1023,69 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
 
         <!-- Payment History -->
         <?php if (!empty($payments)): ?>
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-history"></i>
-                <h3>Riwayat Pembayaran (<?php echo count($payments); ?> transaksi)</h3>
-            </div>
-            <div class="card-body">
-                <div class="payment-history">
-                    <?php 
-                    $running_total = 0;
-                    foreach ($payments as $index => $payment): 
-                        if ($payment['status'] === 'verified') {
-                            $running_total += $payment['amount'];
-                        }
-                        $payment_type = getPaymentType($payment['amount'], $booking, $running_total - $payment['amount']);
-                    ?>
-                    <div class="payment-card <?php echo $payment['status']; ?>">
-                        <h5>
-                            <span>
-                                <?php echo formatRupiah($payment['amount']); ?>
-                                <small style="color: #666; font-weight: normal;">(<?php echo $payment_type; ?>)</small>
-                            </span>
-                            <span class="status <?php echo $payment['status']; ?>">
-                                <?php 
-                                $status_text = [
-                                    'pending' => 'Menunggu Verifikasi',
-                                    'verified' => 'Terverifikasi',
-                                    'rejected' => 'Ditolak'
-                                ];
-                                echo $status_text[$payment['status']] ?? ucfirst($payment['status']); 
-                                ?>
-                            </span>
-                        </h5>
-                        <div class="payment-details">
-                            <div>
-                                <strong>Tanggal Bayar:</strong><br>
-                                <?php echo date('d/m/Y', strtotime($payment['payment_date'])); ?>
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-history"></i>
+                    <h3>Riwayat Pembayaran (<?php echo count($payments); ?> transaksi)</h3>
+                </div>
+                <div class="card-body">
+                    <div class="payment-history">
+                        <?php
+                        $running_total = 0;
+                        foreach ($payments as $index => $payment):
+                            if ($payment['status'] === 'verified') {
+                                $running_total += $payment['amount'];
+                            }
+                            $payment_type = getPaymentType($payment['amount'], $booking, $running_total - $payment['amount']);
+                        ?>
+                            <div class="payment-card <?php echo $payment['status']; ?>">
+                                <h5>
+                                    <span>
+                                        <?php echo formatRupiah($payment['amount']); ?>
+                                        <small style="color: #666; font-weight: normal;">(<?php echo $payment_type; ?>)</small>
+                                    </span>
+                                    <span class="status <?php echo $payment['status']; ?>">
+                                        <?php
+                                        $status_text = [
+                                            'pending' => 'Menunggu Verifikasi',
+                                            'verified' => 'Terverifikasi',
+                                            'rejected' => 'Ditolak'
+                                        ];
+                                        echo $status_text[$payment['status']] ?? ucfirst($payment['status']);
+                                        ?>
+                                    </span>
+                                </h5>
+                                <div class="payment-details">
+                                    <div>
+                                        <strong>Tanggal Bayar:</strong><br>
+                                        <?php echo date('d/m/Y', strtotime($payment['payment_date'])); ?>
+                                    </div>
+                                    <div>
+                                        <strong>Metode:</strong><br>
+                                        <?php echo ucfirst($payment['payment_method']); ?>
+                                    </div>
+                                    <div>
+                                        <strong>Disubmit:</strong><br>
+                                        <?php echo date('d/m/Y H:i', strtotime($payment['created_at'])); ?>
+                                    </div>
+                                    <?php if ($payment['status'] === 'pending'): ?>
+                                        <div>
+                                            <strong>Status:</strong><br>
+                                            <span style="color: #856404;">Menunggu verifikasi admin</span>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <?php if ($payment['notes']): ?>
+                                    <div
+                                        style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(255,255,255,0.7); border-radius: 4px; font-size: 0.9rem;">
+                                        <strong>Catatan:</strong> <?php echo htmlspecialchars($payment['notes']); ?>
+                                    </div>
+                                <?php endif; ?>
                             </div>
-                            <div>
-                                <strong>Metode:</strong><br>
-                                <?php echo ucfirst($payment['payment_method']); ?>
-                            </div>
-                            <div>
-                                <strong>Disubmit:</strong><br>
-                                <?php echo date('d/m/Y H:i', strtotime($payment['created_at'])); ?>
-                            </div>
-                            <?php if ($payment['status'] === 'pending'): ?>
-                            <div>
-                                <strong>Status:</strong><br>
-                                <span style="color: #856404;">Menunggu verifikasi admin</span>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                        <?php if ($payment['notes']): ?>
-                        <div style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(255,255,255,0.7); border-radius: 4px; font-size: 0.9rem;">
-                            <strong>Catatan:</strong> <?php echo htmlspecialchars($payment['notes']); ?>
-                        </div>
-                        <?php endif; ?>
+                        <?php endforeach; ?>
                     </div>
-                    <?php endforeach; ?>
                 </div>
             </div>
-        </div>
         <?php endif; ?>
     </main>
 
@@ -1062,12 +1096,12 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = 'cancel_booking.php';
-                
+
                 const input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = 'booking_id';
                 input.value = bookingId;
-                
+
                 form.appendChild(input);
                 document.body.appendChild(form);
                 form.submit();
@@ -1097,4 +1131,5 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
         });
     </script>
 </body>
+
 </html>

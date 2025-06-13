@@ -19,7 +19,7 @@ if ($_POST && isset($_POST['action'])) {
             $booking_id = (int)$_POST['booking_id'];
             $new_status = $_POST['status'];
             $notes = trim($_POST['notes']);
-            
+
             $stmt = $db->prepare("UPDATE bookings SET status = ?, notes = ?, updated_at = NOW() WHERE id = ?");
             if ($stmt->execute([$new_status, $notes, $booking_id])) {
                 $success = "Status booking berhasil diupdate!";
@@ -27,31 +27,31 @@ if ($_POST && isset($_POST['action'])) {
                 $error = "Gagal mengupdate status booking!";
             }
             break;
-            
+
         case 'update_payment_status':
             $payment_id = (int)$_POST['payment_id'];
             $new_status = $_POST['payment_status'];
             $payment_notes = trim($_POST['payment_notes']);
-            
+
             $stmt = $db->prepare("UPDATE payments SET status = ?, notes = ? WHERE id = ?");
             if ($stmt->execute([$new_status, $payment_notes, $payment_id])) {
                 $success = "Status pembayaran berhasil diupdate!";
-                
+
                 // Auto-update booking status
                 if ($new_status === 'verified') {
                     $stmt = $db->prepare("SELECT booking_id FROM payments WHERE id = ?");
                     $stmt->execute([$payment_id]);
                     $payment = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
+
                     if ($payment) {
                         $stmt = $db->prepare("SELECT SUM(amount) as total_paid FROM payments WHERE booking_id = ? AND status = 'verified'");
                         $stmt->execute([$payment['booking_id']]);
                         $total_paid = $stmt->fetch(PDO::FETCH_ASSOC)['total_paid'] ?? 0;
-                        
+
                         $stmt = $db->prepare("SELECT total_amount, down_payment, status FROM bookings WHERE id = ?");
                         $stmt->execute([$payment['booking_id']]);
                         $booking_data = $stmt->fetch(PDO::FETCH_ASSOC);
-                        
+
                         if ($booking_data && $total_paid >= $booking_data['down_payment'] && $booking_data['status'] === 'confirmed') {
                             $stmt = $db->prepare("UPDATE bookings SET status = 'paid' WHERE id = ?");
                             $stmt->execute([$payment['booking_id']]);
@@ -125,22 +125,23 @@ $stmt->execute($params);
 $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Enhanced status function dengan lebih banyak detail
-function getBookingStatus($booking) {
+function getBookingStatus($booking)
+{
     $total_paid = $booking['total_paid'] ?? 0;
     $pending_amount = $booking['pending_amount'] ?? 0;
-    
+
     if ($total_paid >= $booking['total_amount']) {
         return ['text' => 'Lunas', 'class' => 'fully-paid', 'color' => '#28a745'];
     }
-    
+
     if ($total_paid >= $booking['down_payment'] && $total_paid > 0) {
         return ['text' => 'DP Dibayar', 'class' => 'dp-paid', 'color' => '#17a2b8'];
     }
-    
+
     if ($total_paid > 0 && $total_paid < $booking['down_payment']) {
         return ['text' => 'Sebagian', 'class' => 'partial-paid', 'color' => '#ffc107'];
     }
-    
+
     $status_map = [
         'pending' => ['text' => 'Pending', 'class' => 'pending', 'color' => '#ffc107'],
         'confirmed' => ['text' => 'Dikonfirmasi', 'class' => 'confirmed', 'color' => '#28a745'],
@@ -149,13 +150,14 @@ function getBookingStatus($booking) {
         'completed' => ['text' => 'Selesai', 'class' => 'completed', 'color' => '#28a745'],
         'cancelled' => ['text' => 'Dibatalkan', 'class' => 'cancelled', 'color' => '#dc3545']
     ];
-    
+
     return $status_map[$booking['status']] ?? ['text' => ucfirst($booking['status']), 'class' => $booking['status'], 'color' => '#6c757d'];
 }
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -178,7 +180,7 @@ function getBookingStatus($booking) {
             background: linear-gradient(135deg, #ff6b6b, #ffa500);
             color: white;
             padding: 1rem 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .header-container {
@@ -208,7 +210,7 @@ function getBookingStatus($booking) {
             width: 250px;
             height: calc(100vh - 70px);
             background: white;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
             padding: 2rem 0;
             overflow-y: auto;
         }
@@ -254,7 +256,7 @@ function getBookingStatus($booking) {
             background: white;
             padding: 1.5rem 2rem;
             border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
             margin-bottom: 2rem;
         }
 
@@ -309,7 +311,7 @@ function getBookingStatus($booking) {
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
         .btn-secondary {
@@ -337,7 +339,7 @@ function getBookingStatus($booking) {
         .bookings-table {
             background: white;
             border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
 
@@ -501,7 +503,7 @@ function getBookingStatus($booking) {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.5);
             z-index: 1000;
         }
 
@@ -591,7 +593,7 @@ function getBookingStatus($booking) {
             padding: 1rem;
             border-radius: 10px;
             text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .quick-stat-number {
@@ -610,29 +612,30 @@ function getBookingStatus($booking) {
             .sidebar {
                 transform: translateX(-100%);
             }
-            
+
             .main-content {
                 margin-left: 0;
             }
-            
+
             .filter-form {
                 grid-template-columns: 1fr;
             }
-            
+
             .table-container {
                 overflow-x: auto;
             }
-            
+
             .table {
                 min-width: 800px;
             }
-            
+
             .quick-stats {
                 grid-template-columns: repeat(2, 1fr);
             }
         }
     </style>
 </head>
+
 <body>
     <!-- Header -->
     <header class="header">
@@ -685,20 +688,25 @@ function getBookingStatus($booking) {
             <form method="GET" class="filter-form">
                 <div class="form-group">
                     <label for="search">Cari Booking</label>
-                    <input type="text" id="search" name="search" placeholder="Kode booking atau nama customer..." 
-                           value="<?php echo htmlspecialchars($search); ?>">
+                    <input type="text" id="search" name="search" placeholder="Kode booking atau nama customer..."
+                        value="<?php echo htmlspecialchars($search); ?>">
                 </div>
-                
+
                 <div class="form-group">
                     <label for="status">Status Booking</label>
                     <select id="status" name="status">
                         <option value="">Semua Status</option>
-                        <option value="pending" <?php echo $status_filter === 'pending' ? 'selected' : ''; ?>>Pending</option>
-                        <option value="confirmed" <?php echo $status_filter === 'confirmed' ? 'selected' : ''; ?>>Dikonfirmasi</option>
+                        <option value="pending" <?php echo $status_filter === 'pending' ? 'selected' : ''; ?>>Pending
+                        </option>
+                        <option value="confirmed" <?php echo $status_filter === 'confirmed' ? 'selected' : ''; ?>>
+                            Dikonfirmasi</option>
                         <option value="paid" <?php echo $status_filter === 'paid' ? 'selected' : ''; ?>>Dibayar</option>
-                        <option value="in_progress" <?php echo $status_filter === 'in_progress' ? 'selected' : ''; ?>>Berlangsung</option>
-                        <option value="completed" <?php echo $status_filter === 'completed' ? 'selected' : ''; ?>>Selesai</option>
-                        <option value="cancelled" <?php echo $status_filter === 'cancelled' ? 'selected' : ''; ?>>Dibatalkan</option>
+                        <option value="in_progress" <?php echo $status_filter === 'in_progress' ? 'selected' : ''; ?>>
+                            Berlangsung</option>
+                        <option value="completed" <?php echo $status_filter === 'completed' ? 'selected' : ''; ?>>
+                            Selesai</option>
+                        <option value="cancelled" <?php echo $status_filter === 'cancelled' ? 'selected' : ''; ?>>
+                            Dibatalkan</option>
                     </select>
                 </div>
 
@@ -706,17 +714,21 @@ function getBookingStatus($booking) {
                     <label for="payment_status">Status Pembayaran</label>
                     <select id="payment_status" name="payment_status">
                         <option value="">Semua</option>
-                        <option value="no_payment" <?php echo $payment_status === 'no_payment' ? 'selected' : ''; ?>>Belum Bayar</option>
-                        <option value="pending_payment" <?php echo $payment_status === 'pending_payment' ? 'selected' : ''; ?>>Ada Pending</option>
-                        <option value="partial_paid" <?php echo $payment_status === 'partial_paid' ? 'selected' : ''; ?>>Sebagian</option>
-                        <option value="fully_paid" <?php echo $payment_status === 'fully_paid' ? 'selected' : ''; ?>>Lunas</option>
+                        <option value="no_payment" <?php echo $payment_status === 'no_payment' ? 'selected' : ''; ?>>
+                            Belum Bayar</option>
+                        <option value="pending_payment"
+                            <?php echo $payment_status === 'pending_payment' ? 'selected' : ''; ?>>Ada Pending</option>
+                        <option value="partial_paid"
+                            <?php echo $payment_status === 'partial_paid' ? 'selected' : ''; ?>>Sebagian</option>
+                        <option value="fully_paid" <?php echo $payment_status === 'fully_paid' ? 'selected' : ''; ?>>
+                            Lunas</option>
                     </select>
                 </div>
-                
+
                 <button type="submit" class="btn">
                     <i class="fas fa-search"></i> Filter
                 </button>
-                
+
                 <a href="bookings.php" class="btn btn-secondary">
                     <i class="fas fa-refresh"></i> Reset
                 </a>
@@ -729,7 +741,7 @@ function getBookingStatus($booking) {
                 <h3><i class="fas fa-calendar-check"></i> Daftar Booking & Pembayaran</h3>
                 <span><?php echo count($bookings); ?> booking ditemukan</span>
             </div>
-            
+
             <?php if (empty($bookings)): ?>
                 <div class="empty-state">
                     <i class="fas fa-calendar-times"></i>
@@ -752,27 +764,32 @@ function getBookingStatus($booking) {
                         </thead>
                         <tbody>
                             <?php foreach ($bookings as $booking): ?>
-                                <?php 
+                                <?php
                                 $status_info = getBookingStatus($booking);
                                 $remaining_payment = $booking['total_amount'] - $booking['total_paid'];
                                 ?>
                                 <tr>
                                     <td>
-                                        <div class="booking-code"><?php echo htmlspecialchars($booking['booking_code']); ?></div>
-                                        <small style="color: #666;"><?php echo date('d/m/Y', strtotime($booking['created_at'])); ?></small>
+                                        <div class="booking-code"><?php echo htmlspecialchars($booking['booking_code']); ?>
+                                        </div>
+                                        <small
+                                            style="color: #666;"><?php echo date('d/m/Y', strtotime($booking['created_at'])); ?></small>
                                     </td>
                                     <td>
                                         <div class="customer-info">
-                                            <div class="customer-name"><?php echo htmlspecialchars($booking['customer_name']); ?></div>
-                                            <div class="customer-phone"><?php echo htmlspecialchars($booking['phone'] ?: '-'); ?></div>
+                                            <div class="customer-name">
+                                                <?php echo htmlspecialchars($booking['customer_name']); ?></div>
+                                            <div class="customer-phone">
+                                                <?php echo htmlspecialchars($booking['phone'] ?: '-'); ?></div>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="package-info">
-                                            <div class="package-name"><?php echo htmlspecialchars($booking['package_name']); ?></div>
+                                            <div class="package-name"><?php echo htmlspecialchars($booking['package_name']); ?>
+                                            </div>
                                             <div class="service-badge">
                                                 <?php $service_icon = getServiceIcon($booking['service_name']); ?>
-<i class="<?php echo $service_icon; ?>"></i>
+                                                <i class="<?php echo $service_icon; ?>"></i>
                                                 <?php echo htmlspecialchars($booking['service_name']); ?>
                                             </div>
                                         </div>
@@ -781,44 +798,52 @@ function getBookingStatus($booking) {
                                         <div><?php echo date('d/m/Y', strtotime($booking['usage_date'])); ?></div>
                                     </td>
                                     <td>
-                                        <span class="status-badge" style="background-color: <?php echo $status_info['color']; ?>; color: white;">
+                                        <span class="status-badge"
+                                            style="background-color: <?php echo $status_info['color']; ?>; color: white;">
                                             <?php echo $status_info['text']; ?>
                                         </span>
                                     </td>
                                     <td>
                                         <div class="payment-summary">
-                                            <div class="payment-total"><?php echo formatRupiah($booking['total_amount']); ?></div>
+                                            <div class="payment-total"><?php echo formatRupiah($booking['total_amount']); ?>
+                                            </div>
                                             <div class="payment-breakdown">
                                                 <?php if ($booking['total_paid'] > 0): ?>
-                                                    <div class="payment-paid">✓ Dibayar: <?php echo formatRupiah($booking['total_paid']); ?></div>
+                                                    <div class="payment-paid">✓ Dibayar:
+                                                        <?php echo formatRupiah($booking['total_paid']); ?></div>
                                                 <?php endif; ?>
-                                                
+
                                                 <?php if ($booking['pending_amount'] > 0): ?>
-                                                    <div class="payment-pending">⏳ Pending: <?php echo formatRupiah($booking['pending_amount']); ?></div>
+                                                    <div class="payment-pending">⏳ Pending:
+                                                        <?php echo formatRupiah($booking['pending_amount']); ?></div>
                                                 <?php endif; ?>
-                                                
+
                                                 <?php if ($remaining_payment > 0): ?>
-                                                    <div class="payment-remaining">⚠ Sisa: <?php echo formatRupiah($remaining_payment); ?></div>
+                                                    <div class="payment-remaining">⚠ Sisa:
+                                                        <?php echo formatRupiah($remaining_payment); ?></div>
                                                 <?php endif; ?>
                                             </div>
-                                            
+
                                             <?php if ($booking['payment_count'] > 0): ?>
                                                 <div class="payment-indicators">
                                                     <?php if ($booking['verified_payments'] > 0): ?>
                                                         <span class="payment-indicator verified">
-                                                            <i class="fas fa-check"></i> <?php echo $booking['verified_payments']; ?> verified
+                                                            <i class="fas fa-check"></i> <?php echo $booking['verified_payments']; ?>
+                                                            verified
                                                         </span>
                                                     <?php endif; ?>
-                                                    
+
                                                     <?php if ($booking['pending_payments'] > 0): ?>
                                                         <span class="payment-indicator pending">
-                                                            <i class="fas fa-clock"></i> <?php echo $booking['pending_payments']; ?> pending
+                                                            <i class="fas fa-clock"></i> <?php echo $booking['pending_payments']; ?>
+                                                            pending
                                                         </span>
                                                     <?php endif; ?>
-                                                    
+
                                                     <?php if ($booking['rejected_payments'] > 0): ?>
                                                         <span class="payment-indicator rejected">
-                                                            <i class="fas fa-times"></i> <?php echo $booking['rejected_payments']; ?> ditolak
+                                                            <i class="fas fa-times"></i> <?php echo $booking['rejected_payments']; ?>
+                                                            ditolak
                                                         </span>
                                                     <?php endif; ?>
                                                 </div>
@@ -830,22 +855,22 @@ function getBookingStatus($booking) {
                                             <a href="booking_detail.php?id=<?php echo $booking['id']; ?>" class="btn btn-sm">
                                                 <i class="fas fa-eye"></i> Detail
                                             </a>
-                                            
-                                            <button type="button" class="btn btn-sm btn-warning" 
-                                                    onclick="updateBookingStatus(<?php echo $booking['id']; ?>, '<?php echo $booking['status']; ?>')">
+
+                                            <button type="button" class="btn btn-sm btn-warning"
+                                                onclick="updateBookingStatus(<?php echo $booking['id']; ?>, '<?php echo $booking['status']; ?>')">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            
+
                                             <?php if ($booking['status'] === 'pending'): ?>
-                                                <button type="button" class="btn btn-sm btn-success" 
-                                                        onclick="quickConfirm(<?php echo $booking['id']; ?>, '<?php echo htmlspecialchars($booking['booking_code']); ?>')">
+                                                <button type="button" class="btn btn-sm btn-success"
+                                                    onclick="quickConfirm(<?php echo $booking['id']; ?>, '<?php echo htmlspecialchars($booking['booking_code']); ?>')">
                                                     <i class="fas fa-check"></i>
                                                 </button>
                                             <?php endif; ?>
-                                            
+
                                             <?php if ($booking['pending_payments'] > 0): ?>
-                                                <button type="button" class="btn btn-sm" style="background: #17a2b8;" 
-                                                        onclick="window.location.href='booking_detail.php?id=<?php echo $booking['id']; ?>#payments'">
+                                                <button type="button" class="btn btn-sm" style="background: #17a2b8;"
+                                                    onclick="window.location.href='booking_detail.php?id=<?php echo $booking['id']; ?>#payments'">
                                                     <i class="fas fa-money-bill"></i> Verifikasi
                                                 </button>
                                             <?php endif; ?>
@@ -871,7 +896,7 @@ function getBookingStatus($booking) {
                 <form method="POST" id="statusForm">
                     <input type="hidden" name="action" value="update_booking_status">
                     <input type="hidden" name="booking_id" id="bookingId">
-                    
+
                     <div class="form-group">
                         <label for="bookingStatus">Status Baru</label>
                         <select id="bookingStatus" name="status" required>
@@ -883,12 +908,13 @@ function getBookingStatus($booking) {
                             <option value="cancelled">Dibatalkan</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="bookingNotes">Catatan (opsional)</label>
-                        <textarea id="bookingNotes" name="notes" placeholder="Berikan catatan untuk customer..."></textarea>
+                        <textarea id="bookingNotes" name="notes"
+                            placeholder="Berikan catatan untuk customer..."></textarea>
                     </div>
-                    
+
                     <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
                         <button type="button" class="btn btn-secondary" onclick="closeStatusModal()">
                             <i class="fas fa-times"></i> Batal
@@ -918,27 +944,27 @@ function getBookingStatus($booking) {
             if (confirm(`Konfirmasi booking ${bookingCode}?`)) {
                 const form = document.createElement('form');
                 form.method = 'POST';
-                
+
                 const actionInput = document.createElement('input');
                 actionInput.type = 'hidden';
                 actionInput.name = 'action';
                 actionInput.value = 'update_booking_status';
-                
+
                 const idInput = document.createElement('input');
                 idInput.type = 'hidden';
                 idInput.name = 'booking_id';
                 idInput.value = bookingId;
-                
+
                 const statusInput = document.createElement('input');
                 statusInput.type = 'hidden';
                 statusInput.name = 'status';
                 statusInput.value = 'confirmed';
-                
+
                 const notesInput = document.createElement('input');
                 notesInput.type = 'hidden';
                 notesInput.name = 'notes';
                 notesInput.value = 'Booking dikonfirmasi oleh admin. Silakan lakukan pembayaran.';
-                
+
                 form.appendChild(actionInput);
                 form.appendChild(idInput);
                 form.appendChild(statusInput);
@@ -987,4 +1013,5 @@ function getBookingStatus($booking) {
         });
     </script>
 </body>
+
 </html>

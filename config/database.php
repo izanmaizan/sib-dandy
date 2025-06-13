@@ -1,15 +1,17 @@
 <?php
 // config/database.php - Fixed version
-class Database {
+class Database
+{
     private $host = 'localhost';
     private $db_name = 'dandy_gallery_gown';
     private $username = 'root';
     private $password = '';
     private $conn;
-    
-    public function getConnection() {
+
+    public function getConnection()
+    {
         $this->conn = null;
-        
+
         try {
             $this->conn = new PDO(
                 "mysql:host=" . $this->host . ";dbname=" . $this->db_name,
@@ -18,55 +20,60 @@ class Database {
             );
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->conn->exec("set names utf8");
-        } catch(PDOException $exception) {
+        } catch (PDOException $exception) {
             echo "Connection error: " . $exception->getMessage();
         }
-        
+
         return $this->conn;
     }
 }
 
 // Fungsi helper untuk koneksi database
-function getDB() {
+function getDB()
+{
     $database = new Database();
     return $database->getConnection();
 }
 
 // Fungsi untuk format rupiah
-function formatRupiah($angka) {
+function formatRupiah($angka)
+{
     return "Rp " . number_format($angka, 0, ',', '.');
 }
 
 // Fungsi untuk generate booking code - FIXED: Proper implementation
-function generateBookingCode() {
+function generateBookingCode()
+{
     $db = getDB(); // Get database connection here
-    
+
     do {
         // Format: BK + YYYYMMDD + 4 digit random
         $code = 'BK' . date('Ymd') . sprintf('%04d', rand(1, 9999));
-        
+
         // Check if code already exists
         $stmt = $db->prepare("SELECT id FROM bookings WHERE booking_code = ?");
         $stmt->execute([$code]);
         $exists = $stmt->fetch();
-        
     } while ($exists);
-    
+
     return $code;
 }
 
 // Fungsi untuk cek login
-function isLoggedIn() {
+function isLoggedIn()
+{
     return isset($_SESSION['user_id']);
 }
 
 // Fungsi untuk cek role admin
-function isAdmin() {
+function isAdmin()
+{
     return isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
 }
 
 // Fungsi untuk redirect jika tidak login
-function requireLogin() {
+function requireLogin()
+{
     if (!isLoggedIn()) {
         header('Location: login.php');
         exit();
@@ -74,7 +81,8 @@ function requireLogin() {
 }
 
 // Fungsi untuk redirect jika bukan admin
-function requireAdmin() {
+function requireAdmin()
+{
     if (!isAdmin()) {
         header('Location: index.php');
         exit();
@@ -84,21 +92,24 @@ function requireAdmin() {
 // Additional helper functions for booking system
 
 // Fungsi untuk menghitung DP
-function calculateDownPayment($total_amount, $percentage = 30) {
+function calculateDownPayment($total_amount, $percentage = 30)
+{
     return $total_amount * ($percentage / 100);
 }
 
 // Fungsi untuk validasi tanggal booking
-function validateBookingDate($date) {
+function validateBookingDate($date)
+{
     $booking_date = strtotime($date);
     $today = strtotime(date('Y-m-d'));
-    
+
     // Booking harus minimal H+1
     return $booking_date > $today;
 }
 
 // Fungsi untuk format status booking dalam bahasa Indonesia
-function getBookingStatusText($status) {
+function getBookingStatusText($status)
+{
     $status_map = [
         'pending' => 'Menunggu Konfirmasi',
         'confirmed' => 'Dikonfirmasi',
@@ -107,24 +118,26 @@ function getBookingStatusText($status) {
         'completed' => 'Selesai',
         'cancelled' => 'Dibatalkan'
     ];
-    
+
     return $status_map[$status] ?? ucfirst($status);
 }
 
 // Fungsi untuk format status pembayaran
-function getPaymentStatusText($status) {
+function getPaymentStatusText($status)
+{
     $status_map = [
         'pending' => 'Menunggu Verifikasi',
         'verified' => 'Terverifikasi',
         'rejected' => 'Ditolak'
     ];
-    
+
     return $status_map[$status] ?? ucfirst($status);
 }
 
 
 // Fungsi untuk mendapatkan service types
-function getServiceTypes() {
+function getServiceTypes()
+{
     return [
         'Baju Pengantin' => [
             'name' => 'Baju Pengantin',
@@ -132,7 +145,7 @@ function getServiceTypes() {
             'description' => 'Layanan penyewaan baju pengantin dengan berbagai pilihan model dan ukuran'
         ],
         'Makeup Pengantin' => [
-            'name' => 'Makeup Pengantin', 
+            'name' => 'Makeup Pengantin',
             'icon' => 'fas fa-palette',
             'description' => 'Layanan makeup profesional untuk pengantin dengan berbagai style'
         ]
@@ -140,14 +153,15 @@ function getServiceTypes() {
 }
 
 // Fungsi untuk mendapatkan icon service type
-function getServiceIcon($service_type) {
+function getServiceIcon($service_type)
+{
     $service_types = getServiceTypes();
     return $service_types[$service_type]['icon'] ?? 'fas fa-question';
 }
 
 // Fungsi untuk mendapatkan deskripsi service type
-function getServiceDescription($service_type) {
+function getServiceDescription($service_type)
+{
     $service_types = getServiceTypes();
     return $service_types[$service_type]['description'] ?? '';
 }
-?>

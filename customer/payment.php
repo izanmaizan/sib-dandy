@@ -36,8 +36,8 @@ $stmt->execute([$booking_id]);
 $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Hitung total yang sudah dibayar
-$total_paid = array_sum(array_column(array_filter($payments, function($p) { 
-    return $p['status'] === 'verified'; 
+$total_paid = array_sum(array_column(array_filter($payments, function ($p) {
+    return $p['status'] === 'verified';
 }), 'amount'));
 
 // Hitung jumlah minimal dan maksimal yang bisa dibayar
@@ -61,7 +61,7 @@ if ($remaining_payment <= 0) {
         $event_date = strtotime($booking['usage_date']);
         $today = time();
         $max_payment_date = $event_date + (7 * 24 * 60 * 60);
-        
+
         if ($today > $event_date && $today > $max_payment_date) {
             $error_message = 'Batas waktu pelunasan sudah habis (maksimal 7 hari setelah acara).';
         } else {
@@ -81,7 +81,7 @@ if ($_POST) {
     $payment_method = $_POST['payment_method'];
     $payment_date = $_POST['payment_date'];
     $notes = trim($_POST['notes']);
-    
+
     // Validasi
     if (empty($amount) || empty($payment_method) || empty($payment_date)) {
         $error = 'Mohon lengkapi semua field yang wajib!';
@@ -99,44 +99,44 @@ if ($_POST) {
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0755, true);
             }
-            
+
             $file_extension = pathinfo($_FILES['payment_proof']['name'], PATHINFO_EXTENSION);
             $allowed_extensions = ['jpg', 'jpeg', 'png', 'pdf'];
-            
+
             if (in_array(strtolower($file_extension), $allowed_extensions)) {
                 $payment_proof = 'payment_' . time() . '_' . $booking_id . '.' . $file_extension;
                 $upload_path = $upload_dir . $payment_proof;
-                
+
                 if (move_uploaded_file($_FILES['payment_proof']['tmp_name'], $upload_path)) {
                     // Insert payment record
                     $stmt = $db->prepare("INSERT INTO payments (booking_id, payment_date, amount, payment_method, payment_proof, notes, status) 
                                         VALUES (?, ?, ?, ?, ?, ?, 'pending')");
-                    
+
                     if ($stmt->execute([$booking_id, $payment_date, $amount, $payment_method, $payment_proof, $notes])) {
-    // Determine payment type for success message
-    $new_total = $total_paid + $amount;
-    if ($new_total >= $booking['total_amount']) {
-        $success = "Pembayaran lunas berhasil disubmit! Admin akan memverifikasi dalam 1x24 jam.";
-    } elseif ($total_paid == 0 && $amount >= $booking['down_payment']) {
-        $success = "Pembayaran DP berhasil disubmit dan menunggu verifikasi admin.";
-    } else {
-        $success = "Pembayaran berhasil disubmit dan menunggu verifikasi admin.";
-    }
-    
-    // Refresh payment data - PERBAIKAN: Query yang benar
-    $stmt = $db->prepare("SELECT * FROM payments WHERE booking_id = ? ORDER BY created_at DESC");
-    $stmt->execute([$booking_id]);
-    $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Hitung ulang total yang sudah dibayar
-    $total_paid = array_sum(array_column(array_filter($payments, function($p) { 
-        return $p['status'] === 'verified'; 
-    }), 'amount'));
-    $remaining_payment = $booking['total_amount'] - $total_paid;
-} else {
-    $error = 'Terjadi kesalahan saat menyimpan data pembayaran!';
-    unlink($upload_path);
-}
+                        // Determine payment type for success message
+                        $new_total = $total_paid + $amount;
+                        if ($new_total >= $booking['total_amount']) {
+                            $success = "Pembayaran lunas berhasil disubmit! Admin akan memverifikasi dalam 1x24 jam.";
+                        } elseif ($total_paid == 0 && $amount >= $booking['down_payment']) {
+                            $success = "Pembayaran DP berhasil disubmit dan menunggu verifikasi admin.";
+                        } else {
+                            $success = "Pembayaran berhasil disubmit dan menunggu verifikasi admin.";
+                        }
+
+                        // Refresh payment data - PERBAIKAN: Query yang benar
+                        $stmt = $db->prepare("SELECT * FROM payments WHERE booking_id = ? ORDER BY created_at DESC");
+                        $stmt->execute([$booking_id]);
+                        $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                        // Hitung ulang total yang sudah dibayar
+                        $total_paid = array_sum(array_column(array_filter($payments, function ($p) {
+                            return $p['status'] === 'verified';
+                        }), 'amount'));
+                        $remaining_payment = $booking['total_amount'] - $total_paid;
+                    } else {
+                        $error = 'Terjadi kesalahan saat menyimpan data pembayaran!';
+                        unlink($upload_path);
+                    }
                 } else {
                     $error = 'Gagal mengupload bukti pembayaran!';
                 }
@@ -150,9 +150,10 @@ if ($_POST) {
 }
 
 // Function untuk menentukan jenis pembayaran
-function getPaymentTypeLabel($amount, $booking, $total_paid_before) {
+function getPaymentTypeLabel($amount, $booking, $total_paid_before)
+{
     $total_after = $total_paid_before + $amount;
-    
+
     if ($total_after >= $booking['total_amount']) {
         return 'Lunas';
     } elseif ($total_paid_before == 0 && $amount >= $booking['down_payment']) {
@@ -178,13 +179,13 @@ if ($total_paid == 0) {
         'label' => '50%',
         'description' => 'Bayar setengah'
     ];
-    
+
     $payment_suggestions[] = [
         'amount' => $booking['total_amount'],
         'label' => 'Lunas',
         'description' => 'Bayar semua'
     ];
-    
+
     // Tambahkan DP jika berbeda dengan 50%
     if ($booking['down_payment'] != $fifty_percent_payment) {
         array_unshift($payment_suggestions, [
@@ -201,7 +202,7 @@ if ($total_paid == 0) {
             'label' => 'Lunas',
             'description' => 'Bayar sisa'
         ];
-        
+
         // Tambahkan opsi pembayaran sebagian jika sisa > 500k
         if ($remaining_payment > 500000) {
             $payment_suggestions[] = [
@@ -209,7 +210,7 @@ if ($total_paid == 0) {
                 'label' => '500K',
                 'description' => 'Cicilan'
             ];
-            
+
             if ($remaining_payment > 1000000) {
                 $payment_suggestions[] = [
                     'amount' => 1000000,
@@ -224,6 +225,7 @@ if ($total_paid == 0) {
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -246,7 +248,7 @@ if ($total_paid == 0) {
             background: linear-gradient(135deg, #ff6b6b, #ffa500);
             color: white;
             padding: 1rem 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .header-container {
@@ -304,7 +306,7 @@ if ($total_paid == 0) {
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
         .btn-secondary {
@@ -343,7 +345,7 @@ if ($total_paid == 0) {
         }
 
         .amount-item {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             padding: 1rem;
             border-radius: 8px;
             text-align: center;
@@ -370,7 +372,7 @@ if ($total_paid == 0) {
         .card {
             background: white;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
 
@@ -664,11 +666,11 @@ if ($total_paid == 0) {
             .payment-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .payment-amount {
                 grid-template-columns: 1fr;
             }
-            
+
             .form-row {
                 grid-template-columns: 1fr;
             }
@@ -683,6 +685,7 @@ if ($total_paid == 0) {
         }
     </style>
 </head>
+
 <body>
     <!-- Header -->
     <header class="header">
@@ -710,7 +713,7 @@ if ($total_paid == 0) {
 
         <?php if ($auto_redirect): ?>
             <div class="alert info">
-                <i class="fas fa-info-circle"></i> 
+                <i class="fas fa-info-circle"></i>
                 Silakan lakukan pembayaran untuk booking Anda. Anda bisa memilih DP 30%, 50%, atau lunas sekaligus.
             </div>
         <?php endif; ?>
@@ -733,7 +736,7 @@ if ($total_paid == 0) {
                 <i class="fas fa-hashtag"></i> <?php echo htmlspecialchars($booking['booking_code']); ?>
             </div>
             <div class="booking-package"><?php echo htmlspecialchars($booking['package_name']); ?></div>
-            
+
             <div class="payment-amount">
                 <div class="amount-item">
                     <div class="amount-value"><?php echo formatRupiah($booking['total_amount']); ?></div>
@@ -753,7 +756,8 @@ if ($total_paid == 0) {
         <?php if (!$can_pay): ?>
             <div class="card">
                 <div class="card-body" style="text-align: center; padding: 3rem;">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #dc3545; margin-bottom: 1rem;"></i>
+                    <i class="fas fa-exclamation-triangle"
+                        style="font-size: 4rem; color: #dc3545; margin-bottom: 1rem;"></i>
                     <h3>Tidak Dapat Melakukan Pembayaran</h3>
                     <p style="color: #666; margin-bottom: 2rem;">
                         <?php echo $error_message; ?>
@@ -794,12 +798,14 @@ if ($total_paid == 0) {
                         <?php elseif ($total_paid < $booking['down_payment']): ?>
                             <div class="payment-info warning">
                                 <i class="fas fa-exclamation-triangle"></i>
-                                <strong>Perhatian:</strong> Anda perlu melunasi DP terlebih dahulu sebelum melakukan pembayaran lainnya.
+                                <strong>Perhatian:</strong> Anda perlu melunasi DP terlebih dahulu sebelum melakukan pembayaran
+                                lainnya.
                             </div>
                         <?php else: ?>
                             <div class="payment-info success">
                                 <i class="fas fa-check-circle"></i>
-                                <strong>DP Sudah Dibayar:</strong> Anda bisa melakukan pelunasan kapan saja sebelum atau sesudah acara 
+                                <strong>DP Sudah Dibayar:</strong> Anda bisa melakukan pelunasan kapan saja sebelum atau sesudah
+                                acara
                                 (maksimal 7 hari setelah acara).
                             </div>
                         <?php endif; ?>
@@ -808,35 +814,35 @@ if ($total_paid == 0) {
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="amount">Jumlah Pembayaran <span style="color: #ff6b6b;">*</span></label>
-                                    <input type="number" id="amount" name="amount" step="0.01" required 
-                                           min="<?php echo $total_paid == 0 ? $minimum_payment : 1; ?>" 
-                                           max="<?php echo $remaining_payment; ?>" 
-                                           placeholder="Masukkan jumlah pembayaran">
-                                    
+                                    <input type="number" id="amount" name="amount" step="0.01" required
+                                        min="<?php echo $total_paid == 0 ? $minimum_payment : 1; ?>"
+                                        max="<?php echo $remaining_payment; ?>" placeholder="Masukkan jumlah pembayaran">
+
                                     <div class="quick-amount-buttons">
                                         <?php foreach ($payment_suggestions as $suggestion): ?>
-                                            <button type="button" 
-                                                    class="quick-btn <?php echo $suggestion['amount'] == $booking['total_amount'] ? 'success' : ($suggestion['amount'] == $fifty_percent_payment ? 'primary' : ''); ?>" 
-                                                    onclick="setAmount(<?php echo $suggestion['amount']; ?>)"
-                                                    title="<?php echo $suggestion['description'] . ' - ' . formatRupiah($suggestion['amount']); ?>">
+                                            <button type="button"
+                                                class="quick-btn <?php echo $suggestion['amount'] == $booking['total_amount'] ? 'success' : ($suggestion['amount'] == $fifty_percent_payment ? 'primary' : ''); ?>"
+                                                onclick="setAmount(<?php echo $suggestion['amount']; ?>)"
+                                                title="<?php echo $suggestion['description'] . ' - ' . formatRupiah($suggestion['amount']); ?>">
                                                 <?php echo $suggestion['label']; ?>
                                             </button>
                                         <?php endforeach; ?>
                                     </div>
-                                    
+
                                     <div style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">
                                         <?php if ($total_paid == 0): ?>
-                                            Minimal: <?php echo formatRupiah($minimum_payment); ?> | Maksimal: <?php echo formatRupiah($remaining_payment); ?>
+                                            Minimal: <?php echo formatRupiah($minimum_payment); ?> | Maksimal:
+                                            <?php echo formatRupiah($remaining_payment); ?>
                                         <?php else: ?>
                                             Maksimal: <?php echo formatRupiah($remaining_payment); ?>
                                         <?php endif; ?>
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="payment_date">Tanggal Pembayaran <span style="color: #ff6b6b;">*</span></label>
-                                    <input type="date" id="payment_date" name="payment_date" required 
-                                           value="<?php echo date('Y-m-d'); ?>" 
-                                           max="<?php echo date('Y-m-d'); ?>">
+                                    <label for="payment_date">Tanggal Pembayaran <span
+                                            style="color: #ff6b6b;">*</span></label>
+                                    <input type="date" id="payment_date" name="payment_date" required
+                                        value="<?php echo date('Y-m-d'); ?>" max="<?php echo date('Y-m-d'); ?>">
                                 </div>
                             </div>
 
@@ -853,8 +859,8 @@ if ($total_paid == 0) {
                                 <label for="payment_proof">Bukti Pembayaran <span style="color: #ff6b6b;">*</span></label>
                                 <div class="file-upload">
                                     <div class="file-input">
-                                        <input type="file" id="payment_proof" name="payment_proof" 
-                                               accept=".jpg,.jpeg,.png,.pdf" required>
+                                        <input type="file" id="payment_proof" name="payment_proof"
+                                            accept=".jpg,.jpeg,.png,.pdf" required>
                                         <i class="fas fa-cloud-upload-alt"></i>
                                         <span>Klik untuk upload bukti pembayaran</span>
                                         <small style="display: block; margin-top: 0.5rem;">
@@ -866,8 +872,7 @@ if ($total_paid == 0) {
 
                             <div class="form-group">
                                 <label for="notes">Catatan</label>
-                                <textarea id="notes" name="notes" 
-                                          placeholder="Catatan tambahan (opsional)"></textarea>
+                                <textarea id="notes" name="notes" placeholder="Catatan tambahan (opsional)"></textarea>
                             </div>
 
                             <button type="submit" class="btn" style="width: 100%;">
@@ -911,66 +916,66 @@ if ($total_paid == 0) {
 
         <!-- Payment History -->
         <?php if (!empty($payments)): ?>
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-history"></i>
-                <h3>Riwayat Pembayaran</h3>
-            </div>
-            <div class="card-body">
-                <?php 
-                $running_total = 0;
-                foreach ($payments as $payment): 
-                    if ($payment['status'] === 'verified') {
-                        $running_total += $payment['amount'];
-                    }
-                    $payment_type_label = getPaymentTypeLabel($payment['amount'], $booking, $running_total - $payment['amount']);
-                ?>
-                <div class="payment-card">
-                    <h5>
-                        Pembayaran <?php echo formatRupiah($payment['amount']); ?>
-                        <small style="color: #666; font-weight: normal;"> - <?php echo $payment_type_label; ?></small>
-                    </h5>
-                    <div class="payment-details">
-                        <div>
-                            <strong>Tanggal:</strong><br>
-                            <?php echo date('d/m/Y', strtotime($payment['payment_date'])); ?>
-                        </div>
-                        <div>
-                            <strong>Metode:</strong><br>
-                            <?php echo ucfirst($payment['payment_method']); ?>
-                        </div>
-                        <div>
-                            <strong>Status:</strong><br>
-                            <span class="status <?php echo $payment['status']; ?>">
-                                <?php echo getPaymentStatusText($payment['status']); ?>
-                            </span>
-                        </div>
-                        <div>
-                            <strong>Dibuat:</strong><br>
-                            <?php echo date('d/m/Y H:i', strtotime($payment['created_at'])); ?>
-                        </div>
-                        <?php if ($payment['notes']): ?>
-                        <div style="grid-column: 1/-1;">
-                            <strong>Catatan:</strong><br>
-                            <?php echo htmlspecialchars($payment['notes']); ?>
-                        </div>
-                        <?php endif; ?>
-                    </div>
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-history"></i>
+                    <h3>Riwayat Pembayaran</h3>
                 </div>
-                <?php endforeach; ?>
+                <div class="card-body">
+                    <?php
+                    $running_total = 0;
+                    foreach ($payments as $payment):
+                        if ($payment['status'] === 'verified') {
+                            $running_total += $payment['amount'];
+                        }
+                        $payment_type_label = getPaymentTypeLabel($payment['amount'], $booking, $running_total - $payment['amount']);
+                    ?>
+                        <div class="payment-card">
+                            <h5>
+                                Pembayaran <?php echo formatRupiah($payment['amount']); ?>
+                                <small style="color: #666; font-weight: normal;"> - <?php echo $payment_type_label; ?></small>
+                            </h5>
+                            <div class="payment-details">
+                                <div>
+                                    <strong>Tanggal:</strong><br>
+                                    <?php echo date('d/m/Y', strtotime($payment['payment_date'])); ?>
+                                </div>
+                                <div>
+                                    <strong>Metode:</strong><br>
+                                    <?php echo ucfirst($payment['payment_method']); ?>
+                                </div>
+                                <div>
+                                    <strong>Status:</strong><br>
+                                    <span class="status <?php echo $payment['status']; ?>">
+                                        <?php echo getPaymentStatusText($payment['status']); ?>
+                                    </span>
+                                </div>
+                                <div>
+                                    <strong>Dibuat:</strong><br>
+                                    <?php echo date('d/m/Y H:i', strtotime($payment['created_at'])); ?>
+                                </div>
+                                <?php if ($payment['notes']): ?>
+                                    <div style="grid-column: 1/-1;">
+                                        <strong>Catatan:</strong><br>
+                                        <?php echo htmlspecialchars($payment['notes']); ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
-        </div>
         <?php endif; ?>
     </main>
 
     <script>
         function setAmount(amount) {
             document.getElementById('amount').value = amount;
-            
+
             // Update button appearance
             const buttons = document.querySelectorAll('.quick-btn');
             buttons.forEach(btn => btn.style.transform = 'scale(1)');
-            
+
             // Highlight selected button
             event.target.style.transform = 'scale(1.05)';
             setTimeout(() => {
@@ -993,7 +998,7 @@ if ($total_paid == 0) {
         document.getElementById('payment_proof').addEventListener('change', function(e) {
             const file = e.target.files[0];
             const fileInput = document.querySelector('.file-input span');
-            
+
             if (file) {
                 fileInput.textContent = `File terpilih: ${file.name}`;
             } else {
@@ -1006,19 +1011,19 @@ if ($total_paid == 0) {
             const amount = parseFloat(document.getElementById('amount').value);
             const maxAmount = <?php echo $remaining_payment; ?>;
             const minAmount = <?php echo $total_paid == 0 ? $minimum_payment : 1; ?>;
-            
+
             if (amount <= 0) {
                 e.preventDefault();
                 alert('Jumlah pembayaran harus lebih dari 0!');
                 return;
             }
-            
+
             if (amount > maxAmount) {
                 e.preventDefault();
                 alert('Jumlah pembayaran tidak boleh melebihi sisa tagihan!');
                 return;
             }
-            
+
             if (amount < minAmount) {
                 e.preventDefault();
                 alert('Jumlah pembayaran minimal ' + formatRupiah(minAmount) + '!');
@@ -1031,9 +1036,9 @@ if ($total_paid == 0) {
             const totalPaid = <?php echo $total_paid; ?>;
             const dpAmount = <?php echo $booking['down_payment']; ?>;
             const fiftyPercent = <?php echo $fifty_percent_payment; ?>;
-            
+
             const newTotal = totalPaid + amount;
-            
+
             if (newTotal >= totalAmount) {
                 paymentTypeText = 'pembayaran lunas';
             } else if (totalPaid == 0 && amount >= dpAmount) {
@@ -1045,9 +1050,10 @@ if ($total_paid == 0) {
             } else {
                 paymentTypeText = 'pembayaran cicilan';
             }
-            
-            const confirmMessage = `Anda akan melakukan ${paymentTypeText} sebesar ${formatRupiah(amount)}. Apakah Anda yakin?`;
-            
+
+            const confirmMessage =
+                `Anda akan melakukan ${paymentTypeText} sebesar ${formatRupiah(amount)}. Apakah Anda yakin?`;
+
             if (!confirm(confirmMessage)) {
                 e.preventDefault();
             }
@@ -1068,15 +1074,16 @@ if ($total_paid == 0) {
             const amount = parseFloat(e.target.value);
             const maxAmount = <?php echo $remaining_payment; ?>;
             const minAmount = <?php echo $total_paid == 0 ? $minimum_payment : 1; ?>;
-            
+
             if (amount > maxAmount) {
                 e.target.value = maxAmount;
             }
-            
+
             if (amount < 0) {
                 e.target.value = 0;
             }
         });
     </script>
 </body>
+
 </html>

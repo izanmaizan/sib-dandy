@@ -34,23 +34,24 @@ $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Statistik customer
 $stats = [];
 $stats['total_bookings'] = count($bookings);
-$stats['completed_bookings'] = count(array_filter($bookings, function($b) { 
-    return $b['status'] === 'completed'; 
+$stats['completed_bookings'] = count(array_filter($bookings, function ($b) {
+    return $b['status'] === 'completed';
 }));
-$stats['pending_bookings'] = count(array_filter($bookings, function($b) { 
-    return $b['status'] === 'pending'; 
+$stats['pending_bookings'] = count(array_filter($bookings, function ($b) {
+    return $b['status'] === 'pending';
 }));
 $stats['total_spent'] = array_sum(array_column($bookings, 'total_paid'));
-$stats['dp_paid_bookings'] = count(array_filter($bookings, function($b) { 
-    return $b['total_paid'] >= $b['down_payment'] && $b['total_paid'] < $b['total_amount']; 
+$stats['dp_paid_bookings'] = count(array_filter($bookings, function ($b) {
+    return $b['total_paid'] >= $b['down_payment'] && $b['total_paid'] < $b['total_amount'];
 }));
-$stats['fully_paid_bookings'] = count(array_filter($bookings, function($b) { 
-    return $b['total_paid'] >= $b['total_amount']; 
+$stats['fully_paid_bookings'] = count(array_filter($bookings, function ($b) {
+    return $b['total_paid'] >= $b['total_amount'];
 }));
 
 
 // Function status untuk dashboard
-function getDashboardStatus($booking) {
+function getDashboardStatus($booking)
+{
     if ($booking['total_paid'] >= $booking['total_amount']) {
         return 'Lunas';
     } elseif ($booking['total_paid'] >= $booking['down_payment']) {
@@ -70,6 +71,7 @@ function getDashboardStatus($booking) {
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -92,7 +94,7 @@ function getDashboardStatus($booking) {
             background: linear-gradient(135deg, #ff6b6b, #ffa500);
             color: white;
             padding: 1rem 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .header-container {
@@ -122,7 +124,7 @@ function getDashboardStatus($booking) {
             width: 250px;
             height: calc(100vh - 70px);
             background: white;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
             padding: 2rem 0;
         }
 
@@ -163,7 +165,7 @@ function getDashboardStatus($booking) {
             padding: 2rem;
             border-radius: 15px;
             margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
         .welcome-card h2 {
@@ -186,7 +188,7 @@ function getDashboardStatus($booking) {
             background: white;
             padding: 2rem;
             border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s;
         }
 
@@ -237,7 +239,7 @@ function getDashboardStatus($booking) {
         .card {
             background: white;
             border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
             overflow: hidden;
             margin-bottom: 2rem;
         }
@@ -343,17 +345,18 @@ function getDashboardStatus($booking) {
             .sidebar {
                 transform: translateX(-100%);
             }
-            
+
             .main-content {
                 margin-left: 0;
             }
-            
+
             .stats-grid {
                 grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
+
 <body>
     <!-- Header -->
     <header class="header">
@@ -384,7 +387,7 @@ function getDashboardStatus($booking) {
     <main class="main-content">
         <!-- Welcome Card -->
         <div class="welcome-card">
-<h2>Selamat Datang, <?php echo htmlspecialchars($_SESSION['full_name']); ?>!</h2>
+            <h2>Selamat Datang, <?php echo htmlspecialchars($_SESSION['full_name']); ?>!</h2>
             <p>Kelola semua booking dan persiapan pernikahan Anda dengan mudah melalui dashboard ini.</p>
         </div>
 
@@ -398,21 +401,21 @@ function getDashboardStatus($booking) {
                 <div class="stat-label">Total Booking</div>
             </div>
 
-<div class="stat-card">
-    <div class="stat-icon completed">
-        <i class="fas fa-check-circle"></i>
-    </div>
-    <div class="stat-number"><?php echo $stats['fully_paid_bookings']; ?></div>
-    <div class="stat-label">Booking Lunas</div>
-</div>
+            <div class="stat-card">
+                <div class="stat-icon completed">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-number"><?php echo $stats['fully_paid_bookings']; ?></div>
+                <div class="stat-label">Booking Lunas</div>
+            </div>
 
             <div class="stat-card">
-    <div class="stat-icon pending">
-        <i class="fas fa-credit-card"></i>
-    </div>
-    <div class="stat-number"><?php echo $stats['dp_paid_bookings']; ?></div>
-    <div class="stat-label">DP Dibayar</div>
-</div>
+                <div class="stat-icon pending">
+                    <i class="fas fa-credit-card"></i>
+                </div>
+                <div class="stat-number"><?php echo $stats['dp_paid_bookings']; ?></div>
+                <div class="stat-label">DP Dibayar</div>
+            </div>
 
             <div class="stat-card">
                 <div class="stat-icon spent">
@@ -454,32 +457,34 @@ function getDashboardStatus($booking) {
                             </tr>
                         </thead>
                         <tbody>
-    <?php foreach (array_slice($bookings, 0, 5) as $booking): ?>
-    <tr>
-        <td><strong><?php echo htmlspecialchars($booking['booking_code']); ?></strong></td>
-        <td><?php echo htmlspecialchars($booking['package_name']); ?></td>
-        <td><?php echo date('d/m/Y', strtotime($booking['usage_date'])); ?></td>
-        <td>
-            <?php echo formatRupiah($booking['total_amount']); ?>
-            <?php if ($booking['total_paid'] > 0): ?>
-                <br><small style="color: #28a745;">Dibayar: <?php echo formatRupiah($booking['total_paid']); ?></small>
-            <?php endif; ?>
-        </td>
-        <td>
-            <span class="status <?php echo getDashboardStatus($booking) === 'Lunas' ? 'completed' : ($booking['total_paid'] >= $booking['down_payment'] ? 'paid' : $booking['status']); ?>">
-                <?php echo getDashboardStatus($booking); ?>
-            </span>
-        </td>
-        <td>
-            <a href="booking_detail.php?id=<?php echo $booking['id']; ?>" class="btn">
-                <i class="fas fa-eye"></i> Detail
-            </a>
-        </td>
-    </tr>
-    <?php endforeach; ?>
-</tbody>
+                            <?php foreach (array_slice($bookings, 0, 5) as $booking): ?>
+                                <tr>
+                                    <td><strong><?php echo htmlspecialchars($booking['booking_code']); ?></strong></td>
+                                    <td><?php echo htmlspecialchars($booking['package_name']); ?></td>
+                                    <td><?php echo date('d/m/Y', strtotime($booking['usage_date'])); ?></td>
+                                    <td>
+                                        <?php echo formatRupiah($booking['total_amount']); ?>
+                                        <?php if ($booking['total_paid'] > 0): ?>
+                                            <br><small style="color: #28a745;">Dibayar:
+                                                <?php echo formatRupiah($booking['total_paid']); ?></small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span
+                                            class="status <?php echo getDashboardStatus($booking) === 'Lunas' ? 'completed' : ($booking['total_paid'] >= $booking['down_payment'] ? 'paid' : $booking['status']); ?>">
+                                            <?php echo getDashboardStatus($booking); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="booking_detail.php?id=<?php echo $booking['id']; ?>" class="btn">
+                                            <i class="fas fa-eye"></i> Detail
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
                     </table>
-                    
+
                     <?php if (count($bookings) > 5): ?>
                         <div style="text-align: center; margin-top: 1rem;">
                             <a href="bookings.php" class="btn btn-secondary">
@@ -493,4 +498,5 @@ function getDashboardStatus($booking) {
 
     </main>
 </body>
+
 </html>

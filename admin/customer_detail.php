@@ -45,9 +45,15 @@ $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Calculate statistics
 $total_bookings = count($bookings);
-$completed_bookings = count(array_filter($bookings, function($b) { return $b['status'] === 'completed'; }));
-$total_spent = array_sum(array_column(array_filter($bookings, function($b) { return in_array($b['status'], ['paid', 'completed']); }), 'total_amount'));
-$pending_payments = array_sum(array_column(array_filter($payments, function($p) { return $p['status'] === 'pending'; }), 'amount'));
+$completed_bookings = count(array_filter($bookings, function ($b) {
+    return $b['status'] === 'completed';
+}));
+$total_spent = array_sum(array_column(array_filter($bookings, function ($b) {
+    return in_array($b['status'], ['paid', 'completed']);
+}), 'total_amount'));
+$pending_payments = array_sum(array_column(array_filter($payments, function ($p) {
+    return $p['status'] === 'pending';
+}), 'amount'));
 ?>
 
 <style>
@@ -106,7 +112,7 @@ $pending_payments = array_sum(array_column(array_filter($payments, function($p) 
         padding: 1rem;
         background: white;
         border-radius: 8px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
 
     .stat-mini-number {
@@ -242,7 +248,7 @@ $pending_payments = array_sum(array_column(array_filter($payments, function($p) 
         .detail-grid {
             grid-template-columns: 1fr;
         }
-        
+
         .stats-mini {
             grid-template-columns: 1fr;
         }
@@ -253,7 +259,7 @@ $pending_payments = array_sum(array_column(array_filter($payments, function($p) 
     <!-- Customer Header -->
     <div class="wedding-highlight">
         <div class="wedding-date">
-            <i class="fas fa-user"></i> 
+            <i class="fas fa-user"></i>
             <?php echo htmlspecialchars($customer['full_name']); ?>
         </div>
         <div>Customer ID: #<?php echo str_pad($customer['id'], 4, '0', STR_PAD_LEFT); ?></div>
@@ -280,7 +286,7 @@ $pending_payments = array_sum(array_column(array_filter($payments, function($p) 
     </div> -->
 
     <!-- Customer Information -->
-     
+
     <div class="detail-grid">
         <div class="detail-section">
             <h4><i class="fas fa-user"></i> Informasi Personal</h4>
@@ -338,7 +344,7 @@ $pending_payments = array_sum(array_column(array_filter($payments, function($p) 
     </div>
 
     <!-- Bookings Tab -->
-     <div id="bookings-tab" class="tab-content active">
+    <div id="bookings-tab" class="tab-content active">
         <?php if (empty($bookings)): ?>
             <div style="text-align: center; padding: 2rem; color: #666;">
                 <i class="fas fa-calendar-times" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
@@ -360,31 +366,32 @@ $pending_payments = array_sum(array_column(array_filter($payments, function($p) 
                     </thead>
                     <tbody>
                         <?php foreach ($bookings as $booking): ?>
-                        <tr>
-                            <td><strong><?php echo htmlspecialchars($booking['booking_code']); ?></strong></td>
-                            <td>
-                                <?php echo htmlspecialchars($booking['package_name']); ?><br>
-                                <small style="color: #666;"><?php echo formatRupiah($booking['package_price']); ?></small>
-                            </td>
-<?php $service_icon = getServiceIcon($booking['service_name']); ?>
-<td>
-    <span class="service-badge <?php echo strtolower($booking['service_name']) === 'baju pengantin' ? 'dress' : 'makeup'; ?>">
-        <i class="<?php echo $service_icon; ?>"></i>
-        <?php echo htmlspecialchars($booking['service_name']); ?>
-    </span>
-</td>
-                            <td>
-                                <?php echo date('d/m/Y', strtotime($booking['usage_date'])); ?><br>
-                                <small><?php echo date('H:i', strtotime($booking['usage_time'])); ?></small>
-                            </td>
-                            <td><strong><?php echo formatRupiah($booking['total_amount']); ?></strong></td>
-                            <td>
-                                <span class="status <?php echo $booking['status']; ?>">
-                                    <?php echo ucfirst($booking['status']); ?>
-                                </span>
-                            </td>
-                            <td><?php echo date('d/m/Y', strtotime($booking['created_at'])); ?></td>
-                        </tr>
+                            <tr>
+                                <td><strong><?php echo htmlspecialchars($booking['booking_code']); ?></strong></td>
+                                <td>
+                                    <?php echo htmlspecialchars($booking['package_name']); ?><br>
+                                    <small style="color: #666;"><?php echo formatRupiah($booking['package_price']); ?></small>
+                                </td>
+                                <?php $service_icon = getServiceIcon($booking['service_name']); ?>
+                                <td>
+                                    <span
+                                        class="service-badge <?php echo strtolower($booking['service_name']) === 'baju pengantin' ? 'dress' : 'makeup'; ?>">
+                                        <i class="<?php echo $service_icon; ?>"></i>
+                                        <?php echo htmlspecialchars($booking['service_name']); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <?php echo date('d/m/Y', strtotime($booking['usage_date'])); ?><br>
+                                    <small><?php echo date('H:i', strtotime($booking['usage_time'])); ?></small>
+                                </td>
+                                <td><strong><?php echo formatRupiah($booking['total_amount']); ?></strong></td>
+                                <td>
+                                    <span class="status <?php echo $booking['status']; ?>">
+                                        <?php echo ucfirst($booking['status']); ?>
+                                    </span>
+                                </td>
+                                <td><?php echo date('d/m/Y', strtotime($booking['created_at'])); ?></td>
+                            </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -413,17 +420,17 @@ $pending_payments = array_sum(array_column(array_filter($payments, function($p) 
                     </thead>
                     <tbody>
                         <?php foreach ($payments as $payment): ?>
-                        <tr>
-                            <td><strong><?php echo htmlspecialchars($payment['booking_code']); ?></strong></td>
-                            <td><?php echo date('d/m/Y', strtotime($payment['payment_date'])); ?></td>
-                            <td><strong><?php echo formatRupiah($payment['amount']); ?></strong></td>
-                            <td><?php echo ucfirst($payment['payment_method']); ?></td>
-                            <td>
-                                <span class="status <?php echo $payment['status']; ?>">
-                                    <?php echo ucfirst($payment['status']); ?>
-                                </span>
-                            </td>
-                        </tr>
+                            <tr>
+                                <td><strong><?php echo htmlspecialchars($payment['booking_code']); ?></strong></td>
+                                <td><?php echo date('d/m/Y', strtotime($payment['payment_date'])); ?></td>
+                                <td><strong><?php echo formatRupiah($payment['amount']); ?></strong></td>
+                                <td><?php echo ucfirst($payment['payment_method']); ?></td>
+                                <td>
+                                    <span class="status <?php echo $payment['status']; ?>">
+                                        <?php echo ucfirst($payment['status']); ?>
+                                    </span>
+                                </td>
+                            </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -433,21 +440,21 @@ $pending_payments = array_sum(array_column(array_filter($payments, function($p) 
 </div>
 
 <script>
-function showTab(tabName) {
-    // Hide all tab contents
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    // Remove active class from all buttons
-    document.querySelectorAll('.tab-button').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Show selected tab
-    document.getElementById(tabName + '-tab').classList.add('active');
-    
-    // Add active class to clicked button
-    event.target.classList.add('active');
-}
+    function showTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+
+        // Remove active class from all buttons
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // Show selected tab
+        document.getElementById(tabName + '-tab').classList.add('active');
+
+        // Add active class to clicked button
+        event.target.classList.add('active');
+    }
 </script>

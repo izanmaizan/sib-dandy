@@ -13,94 +13,94 @@ if ($_POST) {
     if (isset($_POST['action'])) {
         switch ($_POST['action']) {
             case 'add_gallery':
-    $title = trim($_POST['title']);
-    $description = trim($_POST['description']);
-    $service_type = trim($_POST['service_type']);
-    $is_featured = isset($_POST['is_featured']) ? 1 : 0;
-    
-    // Handle file upload
-    $image = '';
-    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = '../uploads/gallery/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-        }
-        
-        $file_extension = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
-        $image = 'gallery_' . time() . '.' . $file_extension;
-        $upload_path = $upload_dir . $image;
-        
-        if (move_uploaded_file($_FILES['image']['tmp_name'], $upload_path)) {
-            $stmt = $db->prepare("INSERT INTO gallery (service_type, title, description, image, is_featured) VALUES (?, ?, ?, ?, ?)");
-            if ($stmt->execute([$service_type, $title, $description, $image, $is_featured])) {
-                $success = "Item gallery berhasil ditambahkan!";
-            } else {
-                $error = "Gagal menyimpan ke database!";
-                unlink($upload_path);
-            }
-        } else {
-            $error = "Gagal mengupload gambar!";
-        }
-    } else {
-        $error = "Silakan pilih gambar untuk diupload!";
-    }
-    break;
-            case 'update_gallery':
-    $id = (int)$_POST['gallery_id'];
-    $title = trim($_POST['title']);
-    $description = trim($_POST['description']);
-    $service_type = trim($_POST['service_type']);
-    $is_featured = isset($_POST['is_featured']) ? 1 : 0;
-    
-    // Handle new image upload if provided
-    if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = '../uploads/gallery/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0755, true);
-        }
-        
-        // Get old image to delete
-        $stmt = $db->prepare("SELECT image FROM gallery WHERE id = ?");
-        $stmt->execute([$id]);
-        $old_image = $stmt->fetch(PDO::FETCH_ASSOC)['image'];
-        
-        $file_extension = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
-        $image = 'gallery_' . time() . '.' . $file_extension;
-        $upload_path = $upload_dir . $image;
-        
-        if (move_uploaded_file($_FILES['image']['tmp_name'], $upload_path)) {
-            $stmt = $db->prepare("UPDATE gallery SET service_type = ?, title = ?, description = ?, image = ?, is_featured = ? WHERE id = ?");
-            if ($stmt->execute([$service_type, $title, $description, $image, $is_featured, $id])) {
-                if ($old_image && file_exists($upload_dir . $old_image)) {
-                    unlink($upload_dir . $old_image);
+                $title = trim($_POST['title']);
+                $description = trim($_POST['description']);
+                $service_type = trim($_POST['service_type']);
+                $is_featured = isset($_POST['is_featured']) ? 1 : 0;
+
+                // Handle file upload
+                $image = '';
+                if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+                    $upload_dir = '../uploads/gallery/';
+                    if (!is_dir($upload_dir)) {
+                        mkdir($upload_dir, 0755, true);
+                    }
+
+                    $file_extension = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+                    $image = 'gallery_' . time() . '.' . $file_extension;
+                    $upload_path = $upload_dir . $image;
+
+                    if (move_uploaded_file($_FILES['image']['tmp_name'], $upload_path)) {
+                        $stmt = $db->prepare("INSERT INTO gallery (service_type, title, description, image, is_featured) VALUES (?, ?, ?, ?, ?)");
+                        if ($stmt->execute([$service_type, $title, $description, $image, $is_featured])) {
+                            $success = "Item gallery berhasil ditambahkan!";
+                        } else {
+                            $error = "Gagal menyimpan ke database!";
+                            unlink($upload_path);
+                        }
+                    } else {
+                        $error = "Gagal mengupload gambar!";
+                    }
+                } else {
+                    $error = "Silakan pilih gambar untuk diupload!";
                 }
-                $success = "Item gallery berhasil diupdate!";
-            } else {
-                $error = "Gagal mengupdate ke database!";
-                unlink($upload_path);
-            }
-        } else {
-            $error = "Gagal mengupload gambar baru!";
-        }
-    } else {
-        // Update without changing image - PERBAIKI INI:
-        $stmt = $db->prepare("UPDATE gallery SET service_type = ?, title = ?, description = ?, is_featured = ? WHERE id = ?");
-        if ($stmt->execute([$service_type, $title, $description, $is_featured, $id])) {
-            $success = "Item gallery berhasil diupdate!";
-        } else {
-            $error = "Gagal mengupdate gallery!";
-        }
-    }
-    break;
-                
+                break;
+            case 'update_gallery':
+                $id = (int)$_POST['gallery_id'];
+                $title = trim($_POST['title']);
+                $description = trim($_POST['description']);
+                $service_type = trim($_POST['service_type']);
+                $is_featured = isset($_POST['is_featured']) ? 1 : 0;
+
+                // Handle new image upload if provided
+                if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+                    $upload_dir = '../uploads/gallery/';
+                    if (!is_dir($upload_dir)) {
+                        mkdir($upload_dir, 0755, true);
+                    }
+
+                    // Get old image to delete
+                    $stmt = $db->prepare("SELECT image FROM gallery WHERE id = ?");
+                    $stmt->execute([$id]);
+                    $old_image = $stmt->fetch(PDO::FETCH_ASSOC)['image'];
+
+                    $file_extension = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+                    $image = 'gallery_' . time() . '.' . $file_extension;
+                    $upload_path = $upload_dir . $image;
+
+                    if (move_uploaded_file($_FILES['image']['tmp_name'], $upload_path)) {
+                        $stmt = $db->prepare("UPDATE gallery SET service_type = ?, title = ?, description = ?, image = ?, is_featured = ? WHERE id = ?");
+                        if ($stmt->execute([$service_type, $title, $description, $image, $is_featured, $id])) {
+                            if ($old_image && file_exists($upload_dir . $old_image)) {
+                                unlink($upload_dir . $old_image);
+                            }
+                            $success = "Item gallery berhasil diupdate!";
+                        } else {
+                            $error = "Gagal mengupdate ke database!";
+                            unlink($upload_path);
+                        }
+                    } else {
+                        $error = "Gagal mengupload gambar baru!";
+                    }
+                } else {
+                    // Update without changing image - PERBAIKI INI:
+                    $stmt = $db->prepare("UPDATE gallery SET service_type = ?, title = ?, description = ?, is_featured = ? WHERE id = ?");
+                    if ($stmt->execute([$service_type, $title, $description, $is_featured, $id])) {
+                        $success = "Item gallery berhasil diupdate!";
+                    } else {
+                        $error = "Gagal mengupdate gallery!";
+                    }
+                }
+                break;
+
             case 'delete_gallery':
                 $id = (int)$_POST['gallery_id'];
-                
+
                 // Get image filename to delete
                 $stmt = $db->prepare("SELECT image FROM gallery WHERE id = ?");
                 $stmt->execute([$id]);
                 $gallery = $stmt->fetch(PDO::FETCH_ASSOC);
-                
+
                 if ($gallery) {
                     $stmt = $db->prepare("DELETE FROM gallery WHERE id = ?");
                     if ($stmt->execute([$id])) {
@@ -132,6 +132,7 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -154,7 +155,7 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
             background: linear-gradient(135deg, #ff6b6b, #ffa500);
             color: white;
             padding: 1rem 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .header-container {
@@ -184,7 +185,7 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
             width: 250px;
             height: calc(100vh - 70px);
             background: white;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
             padding: 2rem 0;
         }
 
@@ -242,7 +243,7 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
         .btn-secondary {
@@ -270,7 +271,7 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
             padding: 1rem;
             border-radius: 10px;
             text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .stat-number {
@@ -295,13 +296,13 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
             background: white;
             border-radius: 15px;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s, box-shadow 0.3s;
         }
 
         .gallery-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
         }
 
         .gallery-image {
@@ -330,7 +331,7 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
             position: absolute;
             top: 1rem;
             right: 1rem;
-            background: rgba(255,255,255,0.9);
+            background: rgba(255, 255, 255, 0.9);
             color: #ff6b6b;
             padding: 0.25rem 0.75rem;
             border-radius: 15px;
@@ -379,7 +380,7 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.5);
             z-index: 1000;
             overflow-y: auto;
         }
@@ -487,17 +488,18 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
             .sidebar {
                 transform: translateX(-100%);
             }
-            
+
             .main-content {
                 margin-left: 0;
             }
-            
+
             .gallery-grid {
                 grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
+
 <body>
     <!-- Header -->
     <header class="header">
@@ -551,7 +553,9 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <!-- <div class="stats-summary">
             <?php
             $total_items = count($gallery_items);
-            $featured_items = count(array_filter($gallery_items, function($item) { return $item['is_featured']; }));
+            $featured_items = count(array_filter($gallery_items, function ($item) {
+                return $item['is_featured'];
+            }));
             $categories = array_count_values(array_column($gallery_items, 'category'));
             ?>
             <div class="stat-item">
@@ -578,7 +582,8 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         <!-- Gallery Grid -->
         <?php if (empty($gallery_items)): ?>
-            <div style="text-align: center; padding: 4rem; background: white; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+            <div
+                style="text-align: center; padding: 4rem; background: white; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
                 <i class="fas fa-images" style="font-size: 4rem; color: #ccc; margin-bottom: 1rem;"></i>
                 <h3>Gallery Kosong</h3>
                 <p style="color: #666; margin-bottom: 2rem;">Mulai tambahkan portfolio foto untuk showcase karya Anda.</p>
@@ -592,40 +597,43 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="gallery-card">
                         <div class="gallery-image">
                             <?php if ($item['image'] && file_exists('../uploads/gallery/' . $item['image'])): ?>
-                                <img src="../uploads/gallery/<?php echo htmlspecialchars($item['image']); ?>" 
-                                     alt="<?php echo htmlspecialchars($item['title']); ?>">
+                                <img src="../uploads/gallery/<?php echo htmlspecialchars($item['image']); ?>"
+                                    alt="<?php echo htmlspecialchars($item['title']); ?>">
                             <?php else: ?>
                                 <div class="placeholder">
                                     <i class="fas fa-image"></i>
                                 </div>
                             <?php endif; ?>
-                            
+
                             <?php if ($item['is_featured']): ?>
                                 <div class="featured-badge">
                                     <i class="fas fa-star"></i> Featured
                                 </div>
                             <?php endif; ?>
                         </div>
-                        
+
                         <div class="gallery-content">
                             <h3 class="gallery-title"><?php echo htmlspecialchars($item['title']); ?></h3>
-                            
+
                             <div class="gallery-category">
-    <?php $service_icon = getServiceIcon($item['service_name']); ?>
-    <i class="<?php echo $service_icon; ?>"></i> <?php echo htmlspecialchars($item['service_name']); ?>
-</div>
-                            
+                                <?php $service_icon = getServiceIcon($item['service_name']); ?>
+                                <i class="<?php echo $service_icon; ?>"></i>
+                                <?php echo htmlspecialchars($item['service_name']); ?>
+                            </div>
+
                             <?php if ($item['description']): ?>
                                 <p class="gallery-description">
                                     <?php echo htmlspecialchars(substr($item['description'], 0, 100)) . (strlen($item['description']) > 100 ? '...' : ''); ?>
                                 </p>
                             <?php endif; ?>
-                            
+
                             <div class="gallery-actions">
-                                <button type="button" class="btn btn-sm" onclick="openEditModal(<?php echo htmlspecialchars(json_encode($item)); ?>)">
+                                <button type="button" class="btn btn-sm"
+                                    onclick="openEditModal(<?php echo htmlspecialchars(json_encode($item)); ?>)">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
-                                <button type="button" class="btn btn-sm btn-danger" onclick="confirmDelete(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['title']); ?>')">
+                                <button type="button" class="btn btn-sm btn-danger"
+                                    onclick="confirmDelete(<?php echo $item['id']; ?>, '<?php echo htmlspecialchars($item['title']); ?>')">
                                     <i class="fas fa-trash"></i> Hapus
                                 </button>
                             </div>
@@ -647,39 +655,39 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <form method="POST" enctype="multipart/form-data" id="galleryForm">
                     <input type="hidden" name="action" id="formAction" value="add_gallery">
                     <input type="hidden" name="gallery_id" id="galleryId">
-                    
+
                     <div class="form-group">
                         <label for="title">Judul *</label>
                         <input type="text" id="title" name="title" required>
                     </div>
-                    
+
                     <div class="form-group">
-    <label for="service_type">Jenis Layanan *</label>
-    <select id="service_type" name="service_type" required>
-        <option value="">Pilih Jenis Layanan</option>
-        <option value="Baju Pengantin">Baju Pengantin</option>
-        <option value="Makeup Pengantin">Makeup Pengantin</option>
-    </select>
-</div>
-                    
+                        <label for="service_type">Jenis Layanan *</label>
+                        <select id="service_type" name="service_type" required>
+                            <option value="">Pilih Jenis Layanan</option>
+                            <option value="Baju Pengantin">Baju Pengantin</option>
+                            <option value="Makeup Pengantin">Makeup Pengantin</option>
+                        </select>
+                    </div>
+
                     <div class="form-group">
                         <label for="description">Deskripsi</label>
                         <textarea id="description" name="description" rows="3"></textarea>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="image">Gambar *</label>
                         <input type="file" id="image" name="image" accept="image/*" onchange="previewImage(this)">
                         <img id="imagePreview" class="image-preview" style="display: none;">
                     </div>
-                    
+
                     <div class="form-group">
                         <div class="checkbox-group">
                             <input type="checkbox" id="is_featured" name="is_featured">
                             <label for="is_featured">Tampilkan di Featured</label>
                         </div>
                     </div>
-                    
+
                     <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
                         <button type="button" class="btn btn-secondary" onclick="closeGalleryModal()">
                             <i class="fas fa-times"></i> Batal
@@ -703,14 +711,14 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="modal-body">
                 <p>Apakah Anda yakin ingin menghapus item gallery "<span id="deleteItemTitle"></span>"?</p>
                 <p style="color: #dc3545; margin-top: 1rem;">
-                    <i class="fas fa-exclamation-triangle"></i> 
+                    <i class="fas fa-exclamation-triangle"></i>
                     Gambar juga akan dihapus dari server!
                 </p>
-                
+
                 <form method="POST" style="margin-top: 2rem;">
                     <input type="hidden" name="action" value="delete_gallery">
                     <input type="hidden" name="gallery_id" id="deleteItemId">
-                    
+
                     <div style="display: flex; gap: 1rem; justify-content: flex-end;">
                         <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">
                             <i class="fas fa-times"></i> Batal
@@ -736,26 +744,26 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         function openEditModal(itemData) {
-    document.getElementById('modalTitle').textContent = 'Edit Item Gallery';
-    document.getElementById('formAction').value = 'update_gallery';
-    document.getElementById('submitBtn').innerHTML = '<i class="fas fa-save"></i> Update';
-            
+            document.getElementById('modalTitle').textContent = 'Edit Item Gallery';
+            document.getElementById('formAction').value = 'update_gallery';
+            document.getElementById('submitBtn').innerHTML = '<i class="fas fa-save"></i> Update';
+
             // Fill form with item data
             document.getElementById('galleryId').value = itemData.id;
             document.getElementById('title').value = itemData.title;
-    document.getElementById('service_type').value = itemData.service_name;
+            document.getElementById('service_type').value = itemData.service_name;
             document.getElementById('description').value = itemData.description || '';
             document.getElementById('is_featured').checked = itemData.is_featured == 1;
-            
+
             // Show current image if exists
             if (itemData.image) {
-        const preview = document.getElementById('imagePreview');
-        preview.src = '../uploads/gallery/' + itemData.image;
-        preview.style.display = 'block';
-    }
-            
-    document.getElementById('image').required = false;
-    document.getElementById('galleryModal').style.display = 'block';
+                const preview = document.getElementById('imagePreview');
+                preview.src = '../uploads/gallery/' + itemData.image;
+                preview.style.display = 'block';
+            }
+
+            document.getElementById('image').required = false;
+            document.getElementById('galleryModal').style.display = 'block';
         }
 
         function closeGalleryModal() {
@@ -788,7 +796,7 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         window.onclick = function(event) {
             const galleryModal = document.getElementById('galleryModal');
             const deleteModal = document.getElementById('deleteModal');
-            
+
             if (event.target === galleryModal) {
                 closeGalleryModal();
             }
@@ -809,4 +817,5 @@ $gallery_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }, 5000);
     </script>
 </body>
+
 </html>

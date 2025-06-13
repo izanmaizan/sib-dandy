@@ -1,4 +1,4 @@
-<!-- admin/repots.php  -->
+<!-- admin/reports.php  -->
 <?php
 session_start();
 require_once '../config/database.php';
@@ -111,10 +111,58 @@ if ($period === 'week') {
     $stmt->execute([$start_date, $end_date]);
     $daily_trend = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
+// Query untuk mendapatkan detail booking untuk laporan cetak
+$stmt = $db->prepare("SELECT 
+                        b.id,
+                        u.full_name as customer_name,
+                        pkg.name as package_name,
+                        b.created_at as booking_date,
+                        b.total_amount,
+                        COALESCE(SUM(CASE WHEN p.status = 'verified' THEN p.amount ELSE 0 END), 0) as paid_amount,
+                        (b.total_amount - COALESCE(SUM(CASE WHEN p.status = 'verified' THEN p.amount ELSE 0 END), 0)) as remaining_amount,
+                        b.total_amount as total_payment
+                     FROM bookings b
+                     JOIN users u ON b.user_id = u.id
+                     JOIN packages pkg ON b.package_id = pkg.id
+                     LEFT JOIN payments p ON b.id = p.booking_id
+                     WHERE DATE(b.created_at) BETWEEN ? AND ?
+                     GROUP BY b.id, u.full_name, pkg.name, b.created_at, b.total_amount
+                     ORDER BY b.created_at DESC");
+$stmt->execute([$start_date, $end_date]);
+$booking_details = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Fungsi helper untuk format rupiah (jika belum ada)
+if (!function_exists('formatRupiah')) {
+    function formatRupiah($amount) {
+        return 'Rp ' . number_format($amount, 0, ',', '.');
+    }
+}
+
+// Fungsi helper untuk icon service (jika belum ada)
+if (!function_exists('getServiceIcon')) {
+    function getServiceIcon($service_type) {
+        $icons = [
+            'wedding' => 'fas fa-ring',
+            'prewedding' => 'fas fa-camera',
+            'party' => 'fas fa-glass-cheers',
+            'graduation' => 'fas fa-graduation-cap',
+            'corporate' => 'fas fa-briefcase',
+            'birthday' => 'fas fa-birthday-cake',
+            'family' => 'fas fa-users',
+            'maternity' => 'fas fa-baby',
+            'engagement' => 'fas fa-heart',
+            'other' => 'fas fa-camera'
+        ];
+        
+        return isset($icons[strtolower($service_type)]) ? $icons[strtolower($service_type)] : $icons['other'];
+    }
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -122,390 +170,551 @@ if ($period === 'week') {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f6fa;
+        line-height: 1.6;
+    }
+
+    .header {
+        background: linear-gradient(135deg, #ff6b6b, #ffa500);
+        color: white;
+        padding: 1rem 0;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 2rem;
+    }
+
+    .logo {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 70px;
+        width: 250px;
+        height: calc(100vh - 70px);
+        background: white;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        padding: 2rem 0;
+    }
+
+    .sidebar ul {
+        list-style: none;
+    }
+
+    .sidebar a {
+        display: flex;
+        align-items: center;
+        padding: 1rem 2rem;
+        color: #333;
+        text-decoration: none;
+        transition: background 0.3s;
+        gap: 0.5rem;
+    }
+
+    .sidebar a:hover,
+    .sidebar a.active {
+        background: linear-gradient(135deg, #ff6b6b, #ffa500);
+        color: white;
+    }
+
+    .main-content {
+        margin-left: 250px;
+        padding: 2rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-title {
+        font-size: 2rem;
+        color: #333;
+    }
+
+    .filter-section {
+        background: white;
+        padding: 1.5rem 2rem;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+    }
+
+    .filter-form {
+        display: grid;
+        grid-template-columns: auto auto auto auto auto;
+        gap: 1rem;
+        align-items: end;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group label {
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group select {
+        padding: 10px 12px;
+        border: 2px solid #e1e5e9;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        transition: border-color 0.3s;
+    }
+
+    .form-group select:focus {
+        outline: none;
+        border-color: #ff6b6b;
+    }
+
+    .btn {
+        padding: 10px 15px;
+        background: linear-gradient(45deg, #ff6b6b, #ffa500);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        transition: transform 0.3s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        color: white;
+        margin: 0 auto 1rem;
+    }
+
+    .stat-icon.bookings {
+        background: linear-gradient(45deg, #3498db, #2980b9);
+    }
+
+    .stat-icon.revenue {
+        background: linear-gradient(45deg, #2ecc71, #27ae60);
+    }
+
+    .stat-icon.customers {
+        background: linear-gradient(45deg, #9b59b6, #8e44ad);
+    }
+
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    .report-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid #eee;
+        background: linear-gradient(135deg, #ff6b6b, #ffa500);
+        color: white;
+    }
+
+    .card-body {
+        padding: 2rem;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 1rem;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th,
+    .table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .status-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .status-item:last-child {
+        border-bottom: none;
+    }
+
+    .status-label {
+        font-weight: 500;
+        text-transform: capitalize;
+    }
+
+    .status-count {
+        background: #f8f9fa;
+        color: #666;
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.9rem;
+    }
+
+    .period-info {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        text-align: center;
+        color: #666;
+    }
+
+    .method-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+    }
+
+    .method-name {
+        font-weight: 500;
+        text-transform: capitalize;
+    }
+
+    .method-stats {
+        text-align: right;
+    }
+
+    .method-count {
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    .method-amount {
+        color: #ff6b6b;
+        font-weight: bold;
+    }
+
+    .service-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+    }
+
+    .service-name {
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .service-stats {
+        text-align: right;
+    }
+
+    .service-count {
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    .service-revenue {
+        color: #ff6b6b;
+        font-weight: bold;
+    }
+
+    /* CSS untuk Print Layout */
+    .print-only {
+        display: none;
+    }
+
+    @media print {
+
+        /* Sembunyikan semua elemen kecuali print container */
+        .header,
+        .sidebar,
+        .filter-section,
+        .page-header,
+        .stats-grid,
+        .report-grid,
+        .card,
+        .no-print {
+            display: none !important;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f6fa;
-            line-height: 1.6;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #ff6b6b, #ffa500);
-            color: white;
-            padding: 1rem 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .header-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 2rem;
-        }
-
-        .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .sidebar {
-            position: fixed;
-            left: 0;
-            top: 70px;
-            width: 250px;
-            height: calc(100vh - 70px);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            font-size: 12px;
+            line-height: 1.4;
             background: white;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-            padding: 2rem 0;
-        }
-
-        .sidebar ul {
-            list-style: none;
-        }
-
-        .sidebar a {
-            display: flex;
-            align-items: center;
-            padding: 1rem 2rem;
-            color: #333;
-            text-decoration: none;
-            transition: background 0.3s;
-            gap: 0.5rem;
-        }
-
-        .sidebar a:hover,
-        .sidebar a.active {
-            background: linear-gradient(135deg, #ff6b6b, #ffa500);
-            color: white;
+            color: black;
         }
 
         .main-content {
-            margin-left: 250px;
-            padding: 2rem;
+            margin-left: 0;
+            padding: 0;
         }
 
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
+        .print-only {
+            display: block !important;
         }
 
-        .page-title {
-            font-size: 2rem;
-            color: #333;
-        }
-
-        .filter-section {
-            background: white;
-            padding: 1.5rem 2rem;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
-        }
-
-        .filter-form {
-            display: grid;
-            grid-template-columns: auto auto auto auto auto;
-            gap: 1rem;
-            align-items: end;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-group label {
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .form-group select {
-            padding: 10px 12px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            transition: border-color 0.3s;
-        }
-
-        .form-group select:focus {
-            outline: none;
-            border-color: #ff6b6b;
-        }
-
-        .btn {
-            padding: 10px 15px;
-            background: linear-gradient(45deg, #ff6b6b, #ffa500);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 600;
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        .print-header {
             text-align: center;
-            transition: transform 0.3s;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
         }
 
-        .stat-card:hover {
-            transform: translateY(-5px);
+        .logo-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
         }
 
-        .stat-icon {
-            width: 50px;
-            height: 50px;
+        .print-logo {
+            width: 60px;
+            height: 40px;
+            border: 2px solid #000;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
-            color: white;
-            margin: 0 auto 1rem;
-        }
-
-        .stat-icon.bookings {
-            background: linear-gradient(45deg, #3498db, #2980b9);
-        }
-
-        .stat-icon.revenue {
-            background: linear-gradient(45deg, #2ecc71, #27ae60);
-        }
-
-        .stat-icon.customers {
-            background: linear-gradient(45deg, #9b59b6, #8e44ad);
-        }
-
-        .stat-number {
-            font-size: 1.8rem;
+            margin-right: 20px;
             font-weight: bold;
-            color: #333;
-            margin-bottom: 0.5rem;
+            font-size: 10px;
         }
 
-        .stat-label {
-            color: #666;
-            font-size: 0.9rem;
+        .company-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .company-address {
+            font-size: 11px;
+            margin-top: 5px;
+            color: #333;
+        }
+
+        .print-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border: 2px solid #000;
+        }
+
+        .print-table th,
+        .print-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .print-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .print-table td {
+            font-size: 10px;
+            height: 40px;
+            padding: 5px;
+            vertical-align: top;
+        }
+
+        .print-table .package-name {
+            max-width: 120px;
+            word-wrap: break-word;
+            white-space: normal;
+            line-height: 1.2;
+        }
+
+        .print-table .customer-name {
+            max-width: 100px;
+            word-wrap: break-word;
+            white-space: normal;
+        }
+
+        .diagonal-header {
+            position: relative;
+            background: linear-gradient(to top right, transparent 45%, #000 47%, #000 53%, transparent 55%);
+            min-height: 40px;
+            padding: 5px;
+        }
+
+        .diagonal-top {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+        .diagonal-bottom {
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+        .signature-section {
+            margin-top: 50px;
+            text-align: right;
+        }
+
+        .signature-date {
+            margin-bottom: 10px;
+            font-size: 11px;
+        }
+
+        .signature-title {
+            margin-bottom: 60px;
+            font-size: 11px;
+        }
+
+        .signature-line {
+            border-bottom: 1px solid #000;
+            width: 200px;
+            margin-left: auto;
+            margin-bottom: 5px;
+        }
+
+        .print-period {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .sidebar {
+            transform: translateX(-100%);
+        }
+
+        .main-content {
+            margin-left: 0;
+        }
+
+        .filter-form {
+            grid-template-columns: 1fr;
         }
 
         .report-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
+            grid-template-columns: 1fr;
         }
 
-        .card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            overflow: hidden;
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
         }
-
-        .card-header {
-            padding: 1.5rem 2rem;
-            border-bottom: 1px solid #eee;
-            background: linear-gradient(135deg, #ff6b6b, #ffa500);
-            color: white;
-        }
-
-        .card-body {
-            padding: 2rem;
-        }
-
-        .chart-container {
-            position: relative;
-            height: 300px;
-            margin-bottom: 1rem;
-        }
-
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .table th,
-        .table td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        .table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .status-item:last-child {
-            border-bottom: none;
-        }
-
-        .status-label {
-            font-weight: 500;
-            text-transform: capitalize;
-        }
-
-        .status-count {
-            background: #f8f9fa;
-            color: #666;
-            padding: 0.25rem 0.75rem;
-            border-radius: 15px;
-            font-size: 0.9rem;
-        }
-
-        .period-info {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 2rem;
-            text-align: center;
-            color: #666;
-        }
-
-        .method-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            background: #f8f9fa;
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-        }
-
-        .method-name {
-            font-weight: 500;
-            text-transform: capitalize;
-        }
-
-        .method-stats {
-            text-align: right;
-        }
-
-        .method-count {
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .method-amount {
-            color: #ff6b6b;
-            font-weight: bold;
-        }
-
-        .service-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            background: #f8f9fa;
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-        }
-
-        .service-name {
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .service-stats {
-            text-align: right;
-        }
-
-        .service-count {
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .service-revenue {
-            color: #ff6b6b;
-            font-weight: bold;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
-            
-            .filter-form {
-                grid-template-columns: 1fr;
-            }
-            
-            .report-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media print {
-            .sidebar,
-            .filter-section,
-            .page-header .btn {
-                display: none;
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
-        }
+    }
     </style>
 </head>
+
 <body>
     <!-- Header -->
     <header class="header">
@@ -554,39 +763,40 @@ if ($period === 'week') {
                         <option value="year" <?php echo $period === 'year' ? 'selected' : ''; ?>>Tahun</option>
                     </select>
                 </div>
-                
+
                 <?php if ($period === 'month' || $period === 'year'): ?>
-                    <div class="form-group">
-                        <label for="year">Tahun</label>
-                        <select id="year" name="year" onchange="this.form.submit()">
-                            <?php for ($y = date('Y'); $y >= 2020; $y--): ?>
-                                <option value="<?php echo $y; ?>" <?php echo $year == $y ? 'selected' : ''; ?>><?php echo $y; ?></option>
-                            <?php endfor; ?>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label for="year">Tahun</label>
+                    <select id="year" name="year" onchange="this.form.submit()">
+                        <?php for ($y = date('Y'); $y >= 2020; $y--): ?>
+                        <option value="<?php echo $y; ?>" <?php echo $year == $y ? 'selected' : ''; ?>><?php echo $y; ?>
+                        </option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
                 <?php endif; ?>
-                
+
                 <?php if ($period === 'month'): ?>
-                    <div class="form-group">
-                        <label for="month">Bulan</label>
-                        <select id="month" name="month" onchange="this.form.submit()">
-                            <?php 
+                <div class="form-group">
+                    <label for="month">Bulan</label>
+                    <select id="month" name="month" onchange="this.form.submit()">
+                        <?php 
                             $months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
                                       'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                             for ($m = 1; $m <= 12; $m++):
                             ?>
-                                <option value="<?php echo $m; ?>" <?php echo $month == $m ? 'selected' : ''; ?>>
-                                    <?php echo $months[$m-1]; ?>
-                                </option>
-                            <?php endfor; ?>
-                        </select>
-                    </div>
+                        <option value="<?php echo $m; ?>" <?php echo $month == $m ? 'selected' : ''; ?>>
+                            <?php echo $months[$m-1]; ?>
+                        </option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
                 <?php endif; ?>
-                
+
                 <button type="submit" class="btn">
                     <i class="fas fa-sync"></i> Update
                 </button>
-                
+
                 <a href="reports.php" class="btn btn-secondary">
                     <i class="fas fa-refresh"></i> Reset
                 </a>
@@ -595,7 +805,8 @@ if ($period === 'week') {
 
         <!-- Period Info -->
         <div class="period-info">
-            <strong>Periode Laporan: <?php echo date('d/m/Y', strtotime($start_date)); ?> - <?php echo date('d/m/Y', strtotime($end_date)); ?></strong>
+            <strong>Periode Laporan: <?php echo date('d/m/Y', strtotime($start_date)); ?> -
+                <?php echo date('d/m/Y', strtotime($end_date)); ?></strong>
         </div>
 
         <!-- Statistics Cards -->
@@ -647,35 +858,35 @@ if ($period === 'week') {
             </div>
 
             <!-- Service Type Statistics -->
-<div class="card">
-    <div class="card-header">
-        <h3><i class="fas fa-chart-pie"></i> Jenis Layanan</h3>
-    </div>
-    <div class="card-body">
-        <?php if (empty($service_stats)): ?>
-            <p style="text-align: center; color: #666; padding: 2rem;">
-                Tidak ada data layanan dalam periode ini
-            </p>
-        <?php else: ?>
-            <?php foreach ($service_stats as $service): ?>
-                <div class="service-item">
-                    <div class="service-name">
-                        <?php 
-                        // Perbaikan: gunakan fungsi getServiceIcon dengan pengecekan
-                        $service_icon = getServiceIcon($service['service_name']); 
-                        ?>
-                        <i class="<?php echo $service_icon; ?>"></i>
-                        <?php echo htmlspecialchars($service['service_name']); ?>
-                    </div>
-                    <div class="service-stats">
-                        <div class="service-count"><?php echo $service['booking_count']; ?> booking</div>
-                        <div class="service-revenue"><?php echo formatRupiah($service['revenue']); ?></div>
-                    </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-pie"></i> Jenis Layanan</h3>
                 </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
-</div>
+                <div class="card-body">
+                    <?php if (empty($service_stats)): ?>
+                    <p style="text-align: center; color: #666; padding: 2rem;">
+                        Tidak ada data layanan dalam periode ini
+                    </p>
+                    <?php else: ?>
+                    <?php foreach ($service_stats as $service): ?>
+                    <div class="service-item">
+                        <div class="service-name">
+                            <?php 
+                                    // Perbaikan: gunakan fungsi getServiceIcon dengan pengecekan
+                                    $service_icon = getServiceIcon($service['service_name']); 
+                                    ?>
+                            <i class="<?php echo $service_icon; ?>"></i>
+                            <?php echo htmlspecialchars($service['service_name']); ?>
+                        </div>
+                        <div class="service-stats">
+                            <div class="service-count"><?php echo $service['booking_count']; ?> booking</div>
+                            <div class="service-revenue"><?php echo formatRupiah($service['revenue']); ?></div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
 
         <div class="report-grid">
@@ -686,16 +897,16 @@ if ($period === 'week') {
                 </div>
                 <div class="card-body">
                     <?php foreach ($status_breakdown as $status): ?>
-                        <div class="status-item">
-                            <span class="status-label"><?php echo ucfirst($status['status']); ?></span>
-                            <span class="status-count"><?php echo $status['count']; ?></span>
-                        </div>
+                    <div class="status-item">
+                        <span class="status-label"><?php echo ucfirst($status['status']); ?></span>
+                        <span class="status-count"><?php echo $status['count']; ?></span>
+                    </div>
                     <?php endforeach; ?>
-                    
+
                     <?php if (empty($status_breakdown)): ?>
-                        <p style="text-align: center; color: #666; padding: 2rem;">
-                            Tidak ada data booking dalam periode ini
-                        </p>
+                    <p style="text-align: center; color: #666; padding: 2rem;">
+                        Tidak ada data booking dalam periode ini
+                    </p>
                     <?php endif; ?>
                 </div>
             </div>
@@ -707,19 +918,19 @@ if ($period === 'week') {
                 </div>
                 <div class="card-body">
                     <?php if (empty($payment_methods)): ?>
-                        <p style="text-align: center; color: #666; padding: 2rem;">
-                            Tidak ada data pembayaran dalam periode ini
-                        </p>
+                    <p style="text-align: center; color: #666; padding: 2rem;">
+                        Tidak ada data pembayaran dalam periode ini
+                    </p>
                     <?php else: ?>
-                        <?php foreach ($payment_methods as $method): ?>
-                            <div class="method-item">
-                                <div class="method-name"><?php echo ucfirst($method['payment_method']); ?></div>
-                                <div class="method-stats">
-                                    <div class="method-count"><?php echo $method['count']; ?> transaksi</div>
-                                    <div class="method-amount"><?php echo formatRupiah($method['total_amount']); ?></div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
+                    <?php foreach ($payment_methods as $method): ?>
+                    <div class="method-item">
+                        <div class="method-name"><?php echo ucfirst($method['payment_method']); ?></div>
+                        <div class="method-stats">
+                            <div class="method-count"><?php echo $method['count']; ?> transaksi</div>
+                            <div class="method-amount"><?php echo formatRupiah($method['total_amount']); ?></div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
             </div>
@@ -732,106 +943,216 @@ if ($period === 'week') {
             </div>
             <div class="card-body">
                 <?php if (empty($top_packages)): ?>
-                    <p style="text-align: center; color: #666; padding: 2rem;">
-                        Tidak ada data paket dalam periode ini
-                    </p>
+                <p style="text-align: center; color: #666; padding: 2rem;">
+                    Tidak ada data paket dalam periode ini
+                </p>
                 <?php else: ?>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Paket</th>
-                                <th>Harga</th>
-                                <th>Booking</th>
-                                <th>Revenue</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($top_packages as $package): ?>
-                            <tr>
-                                <td><strong><?php echo htmlspecialchars($package['name']); ?></strong></td>
-                                <td><?php echo formatRupiah($package['price']); ?></td>
-                                <td><?php echo $package['booking_count']; ?>x</td>
-                                <td><strong><?php echo formatRupiah($package['total_revenue']); ?></strong></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Paket</th>
+                            <th>Harga</th>
+                            <th>Booking</th>
+                            <th>Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($top_packages as $package): ?>
+                        <tr>
+                            <td><strong><?php echo htmlspecialchars($package['name']); ?></strong></td>
+                            <td><?php echo formatRupiah($package['price']); ?></td>
+                            <td><?php echo $package['booking_count']; ?>x</td>
+                            <td><strong><?php echo formatRupiah($package['total_revenue']); ?></strong></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
                 <?php endif; ?>
             </div>
         </div>
     </main>
 
-    <script>
-        // Revenue Chart
-        const ctx = document.getElementById('revenueChart').getContext('2d');
-        const monthlyData = <?php echo json_encode($monthly_trend); ?>;
-        
-        const months = monthlyData.map(item => {
-            const date = new Date(item.month + '-01');
-            return date.toLocaleDateString('id-ID', { month: 'short' });
-        });
-        
-        const bookingCounts = monthlyData.map(item => parseInt(item.booking_count));
-        const revenues = monthlyData.map(item => parseFloat(item.revenue));
+    <!-- Print Layout -->
+    <div class="print-only">
+        <!-- Header untuk Print -->
+        <div class="print-header">
+            <div class="logo-section">
+                <!-- <div class="print-logo">Logo</div> -->
+                <h1 class="company-title">Laporan Dandy Gallery Gown</h1>
+            </div>
+            <div class="company-address">
+                Jl. Bungus Selatan, Kec. Bungus, Tlk Kabung, Kota Padang, Sumatra Barat
+            </div>
+        </div>
 
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: months,
-                datasets: [{
-                    label: 'Revenue (Juta Rupiah)',
-                    data: revenues.map(r => r / 1000000),
-                    borderColor: '#ff6b6b',
-                    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }, {
-                    label: 'Jumlah Booking',
-                    data: bookingCounts,
-                    borderColor: '#ffa500',
-                    backgroundColor: 'rgba(255, 165, 0, 0.1)',
-                    tension: 0.4,
-                    yAxisID: 'y1'
-                }]
+        <!-- Periode Info untuk Print -->
+        <div class="print-period">
+            Periode: <?php echo date('d/m/Y', strtotime($start_date)); ?> -
+            <?php echo date('d/m/Y', strtotime($end_date)); ?>
+        </div>
+
+        <!-- Table untuk Print -->
+        <?php if (empty($booking_details)): ?>
+        <div style="text-align: center; margin-top: 50px; font-size: 14px; color: #666;">
+            <p>Tidak ada data booking dalam periode ini</p>
+        </div>
+        <?php else: ?>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th>Nama Customer</th>
+                    <th>Booking</th>
+                    <th>Tanggal</th>
+                    <th>Jumlah</th>
+                    <th>DP</th>
+                    <th>Sisa</th>
+                    <th>Total Bayar</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                    // Array untuk konversi bulan
+                    $months = [
+                        1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+                        5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+                        9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+                    ];
+                    
+                    // Hitung total keseluruhan
+                    $total_jumlah = 0;
+                    $total_dp = 0;
+                    $total_sisa = 0;
+                    $total_bayar = 0;
+                    
+                    foreach ($booking_details as $booking) {
+                        $total_jumlah += $booking['total_amount'];
+                        $total_dp += $booking['paid_amount'];
+                        $total_sisa += $booking['remaining_amount'];
+                        $total_bayar += $booking['total_payment'];
+                    }
+                    ?>
+
+                <?php foreach ($booking_details as $booking): ?>
+                <tr style="height: 40px;">
+                    <td class="customer-name"><?php echo htmlspecialchars($booking['customer_name']); ?></td>
+                    <td class="package-name"><?php echo htmlspecialchars($booking['package_name']); ?></td>
+                    <td>
+                        <?php 
+                            $date = new DateTime($booking['booking_date']);
+                            echo $date->format('d') . ' ' . $months[(int)$date->format('n')] . ' ' . $date->format('Y');
+                            ?>
+                    </td>
+                    <td>Rp. <?php echo number_format($booking['total_amount'], 0, ',', '.'); ?></td>
+                    <td>Rp. <?php echo number_format($booking['paid_amount'], 0, ',', '.'); ?></td>
+                    <td>Rp. <?php echo number_format($booking['remaining_amount'], 0, ',', '.'); ?></td>
+                    <td>Rp. <?php echo number_format($booking['total_payment'], 0, ',', '.'); ?></td>
+                </tr>
+                <?php endforeach; ?>
+
+                <!-- Baris Total Keseluruhan -->
+                <tr style="height: 50px; border-top: 2px solid #000;">
+                    <td colspan="3" style="text-align: center; font-weight: bold; background-color: #f8f9fa;">
+                        Total Keseluruhan Bayar
+                    </td>
+                    <td style="font-weight: bold; background-color: #f8f9fa;">
+                        Rp. <?php echo number_format($total_jumlah, 0, ',', '.'); ?>
+                    </td>
+                    <td style="font-weight: bold; background-color: #f8f9fa;">
+                        Rp. <?php echo number_format($total_dp, 0, ',', '.'); ?>
+                    </td>
+                    <td style="font-weight: bold; background-color: #f8f9fa;">
+                        Rp. <?php echo number_format($total_sisa, 0, ',', '.'); ?>
+                    </td>
+                    <td style="font-weight: bold; background-color: #f8f9fa;">
+                        Rp. <?php echo number_format($total_bayar, 0, ',', '.'); ?>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <?php endif; ?>
+
+        <!-- Signature Section -->
+        <div class="signature-section">
+            <div class="signature-date"><?php echo date('d/m/Y'); ?></div>
+            <div class="signature-title">Nama Admin atau Karyawan</div>
+            <div class="signature-line"></div>
+        </div>
+    </div>
+
+    <script>
+    // Revenue Chart
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    const monthlyData = <?php echo json_encode($monthly_trend); ?>;
+
+    const months = monthlyData.map(item => {
+        const date = new Date(item.month + '-01');
+        return date.toLocaleDateString('id-ID', {
+            month: 'short'
+        });
+    });
+
+    const bookingCounts = monthlyData.map(item => parseInt(item.booking_count));
+    const revenues = monthlyData.map(item => parseFloat(item.revenue));
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: [{
+                label: 'Revenue (Juta Rupiah)',
+                data: revenues.map(r => r / 1000000),
+                borderColor: '#ff6b6b',
+                backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                tension: 0.4,
+                fill: true
+            }, {
+                label: 'Jumlah Booking',
+                data: bookingCounts,
+                borderColor: '#ffa500',
+                backgroundColor: 'rgba(255, 165, 0, 0.1)',
+                tension: 0.4,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Revenue (Juta Rupiah)'
                     }
                 },
-                scales: {
-                    y: {
-                        type: 'linear',
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
                         display: true,
-                        position: 'left',
-                        title: {
-                            display: true,
-                            text: 'Revenue (Juta Rupiah)'
-                        }
+                        text: 'Jumlah Booking'
                     },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Jumlah Booking'
-                        },
-                        grid: {
-                            drawOnChartArea: false,
-                        },
-                    }
+                    grid: {
+                        drawOnChartArea: false,
+                    },
                 }
             }
-        });
+        }
+    });
 
-        // Auto-refresh data setiap 5 menit
-        setInterval(function() {
-            location.reload();
-        }, 300000);
+    // Auto-refresh data setiap 5 menit
+    setInterval(function() {
+        location.reload();
+    }, 300000);
     </script>
 </body>
+
 </html>
