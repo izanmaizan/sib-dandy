@@ -70,16 +70,17 @@ if ($_POST) {
             try {
                 $db->beginTransaction();
 
-                // Insert booking - DIPERBAIKI: sesuai struktur database
+                // Insert booking - DIPERBAIKI: tambahkan service_type
                 $stmt = $db->prepare("INSERT INTO bookings 
-    (booking_code, user_id, package_id, booking_date, usage_date, 
-     venue_address, special_request, total_amount, down_payment, remaining_payment, status) 
-    VALUES (?, ?, ?, CURDATE(), ?, ?, ?, ?, ?, ?, 'pending')");
+        (booking_code, user_id, package_id, service_type, booking_date, usage_date, 
+         venue_address, special_request, total_amount, down_payment, remaining_payment, status) 
+        VALUES (?, ?, ?, ?, CURDATE(), ?, ?, ?, ?, ?, ?, 'pending')");
 
                 $stmt->execute([
                     $booking_code,
                     $_SESSION['user_id'],
                     $package_id,
+                    $package['service_name'], // TAMBAHAN: service_type dari package
                     $usage_date,
                     $venue_address,
                     $final_special_request,

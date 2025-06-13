@@ -62,6 +62,46 @@ if ($_POST && isset($_POST['action'])) {
                 $error = "Gagal mengupdate status pembayaran!";
             }
             break;
+
+        case 'dress_taken':
+            $booking_id = (int)$_POST['booking_id'];
+
+            $stmt = $db->prepare("SELECT notes FROM bookings WHERE id = ?");
+            $stmt->execute([$booking_id]);
+            $current_notes = $stmt->fetch(PDO::FETCH_ASSOC)['notes'] ?? '';
+
+            $take_date = date('d/m/Y H:i');
+            $new_notes = $current_notes . "\n[DRESS_TAKEN] Baju pengantin diambil customer pada $take_date.";
+
+            $stmt = $db->prepare("UPDATE bookings SET notes = ?, updated_at = NOW() WHERE id = ?");
+            if ($stmt->execute([$new_notes, $booking_id])) {
+                $success = "Status pengambilan baju berhasil dicatat!";
+            } else {
+                $error = "Gagal mencatat pengambilan baju!";
+            }
+            break;
+
+        case 'dress_returned':
+            $booking_id = (int)$_POST['booking_id'];
+
+            $stmt = $db->prepare("SELECT notes, status FROM bookings WHERE id = ?");
+            $stmt->execute([$booking_id]);
+            $booking_data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $current_notes = $booking_data['notes'] ?? '';
+            $return_date = date('d/m/Y H:i');
+            $new_notes = $current_notes . "\n[DRESS_RETURNED] Baju pengantin dikembalikan pada $return_date (dicatat oleh admin).";
+
+            // Set status to completed 
+            $new_status = 'completed';
+
+            $stmt = $db->prepare("UPDATE bookings SET notes = ?, status = ?, updated_at = NOW() WHERE id = ?");
+            if ($stmt->execute([$new_notes, $new_status, $booking_id])) {
+                $success = "Pengembalian baju berhasil dicatat dan booking diselesaikan!";
+            } else {
+                $error = "Gagal mencatat pengembalian baju!";
+            }
+            break;
     }
 }
 
@@ -153,6 +193,65 @@ function getBookingStatus($booking)
 
     return $status_map[$booking['status']] ?? ['text' => ucfirst($booking['status']), 'class' => $booking['status'], 'color' => '#6c757d'];
 }
+
+// Function untuk status return dress - TAMBAHAN BARU
+function getDressReturnStatusAdmin($booking)
+{
+    if (!isset($booking['service_name']) || $booking['service_name'] !== 'Baju Pengantin') {
+        return null;
+    }
+
+    $event_date = strtotime($booking['usage_date']);
+    $today = time();
+    $notes = $booking['notes'] ?? '';
+    $total_paid = $booking['total_paid'] ?? 0;
+
+    if (strpos($notes, '[DRESS_RETURNED]') !== false) {
+        return [
+            'status' => 'returned',
+            'text' => 'Dikembalikan',
+            'class' => 'returned',
+            'color' => '#28a745'
+        ];
+    } elseif (strpos($notes, '[DRESS_TAKEN]') !== false) {
+        if ($today > $event_date) {
+            $days_overdue = floor(($today - $event_date) / (60 * 60 * 24));
+            if ($days_overdue > 3) {
+                return [
+                    'status' => 'overdue',
+                    'text' => 'Terlambat (' . $days_overdue . 'h)',
+                    'class' => 'overdue',
+                    'color' => '#dc3545'
+                ];
+            } else {
+                return [
+                    'status' => 'should_return',
+                    'text' => 'Harus Return',
+                    'class' => 'should-return',
+                    'color' => '#ff9800'
+                ];
+            }
+        } else {
+            return [
+                'status' => 'taken',
+                'text' => 'Diambil',
+                'class' => 'taken',
+                'color' => '#17a2b8'
+            ];
+        }
+    } else {
+        if ($total_paid >= $booking['down_payment']) {
+            return [
+                'status' => 'ready_take',
+                'text' => 'Siap Ambil',
+                'class' => 'ready-take',
+                'color' => '#ffc107'
+            ];
+        }
+    }
+
+    return null;
+}
 ?>
 
 <!DOCTYPE html>
@@ -164,475 +263,475 @@ function getBookingStatus($booking)
     <title>Kelola Booking & Pembayaran - Dandy Gallery Admin</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f6fa;
-            line-height: 1.6;
-        }
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f6fa;
+        line-height: 1.6;
+    }
 
-        .header {
-            background: linear-gradient(135deg, #ff6b6b, #ffa500);
-            color: white;
-            padding: 1rem 0;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
+    .header {
+        background: linear-gradient(135deg, #ff6b6b, #ffa500);
+        color: white;
+        padding: 1rem 0;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
 
-        .header-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 2rem;
-        }
+    .header-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 2rem;
+    }
 
-        .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
+    .logo {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
 
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
 
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 70px;
+        width: 250px;
+        height: calc(100vh - 70px);
+        background: white;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        padding: 2rem 0;
+        overflow-y: auto;
+    }
+
+    .sidebar ul {
+        list-style: none;
+    }
+
+    .sidebar a {
+        display: flex;
+        align-items: center;
+        padding: 1rem 2rem;
+        color: #333;
+        text-decoration: none;
+        transition: background 0.3s;
+        gap: 0.5rem;
+    }
+
+    .sidebar a:hover,
+    .sidebar a.active {
+        background: linear-gradient(135deg, #ff6b6b, #ffa500);
+        color: white;
+    }
+
+    .main-content {
+        margin-left: 250px;
+        padding: 2rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-title {
+        font-size: 2rem;
+        color: #333;
+    }
+
+    .filter-section {
+        background: white;
+        padding: 1.5rem 2rem;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+    }
+
+    .filter-form {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        align-items: end;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group label {
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group input,
+    .form-group select {
+        padding: 10px 12px;
+        border: 2px solid #e1e5e9;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        transition: border-color 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #ff6b6b;
+    }
+
+    .btn {
+        padding: 10px 15px;
+        background: linear-gradient(45deg, #ff6b6b, #ffa500);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        transition: transform 0.3s, box-shadow 0.3s;
+        font-size: 0.9rem;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+    }
+
+    .btn-success {
+        background: #28a745;
+    }
+
+    .btn-warning {
+        background: #ffc107;
+        color: #333;
+    }
+
+    .btn-danger {
+        background: #dc3545;
+    }
+
+    .btn-sm {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+
+    .bookings-table {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .table-header {
+        background: linear-gradient(135deg, #ff6b6b, #ffa500);
+        color: white;
+        padding: 1.5rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th,
+    .table td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #333;
+        position: sticky;
+        top: 0;
+    }
+
+    .table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .booking-code {
+        font-weight: bold;
+        color: #333;
+    }
+
+    .customer-info {
+        line-height: 1.4;
+    }
+
+    .customer-name {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .customer-phone {
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    .package-info {
+        line-height: 1.4;
+    }
+
+    .package-name {
+        font-weight: 500;
+        color: #333;
+    }
+
+    .service-badge {
+        display: inline-block;
+        background: #f8f9fa;
+        color: #666;
+        padding: 0.2rem 0.5rem;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        margin-top: 0.25rem;
+    }
+
+    .status-badge {
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-align: center;
+        min-width: 80px;
+        display: inline-block;
+    }
+
+    /* Enhanced payment summary styles */
+    .payment-summary {
+        text-align: center;
+        line-height: 1.3;
+    }
+
+    .payment-total {
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+
+    .payment-breakdown {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        font-size: 0.85rem;
+    }
+
+    .payment-paid {
+        color: #28a745;
+        font-weight: 600;
+    }
+
+    .payment-pending {
+        color: #ffc107;
+        font-weight: 600;
+    }
+
+    .payment-remaining {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    .payment-indicators {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .payment-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 10px;
+    }
+
+    .payment-indicator.pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .payment-indicator.verified {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .payment-indicator.rejected {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background: white;
+        margin: 5% auto;
+        padding: 0;
+        border-radius: 15px;
+        width: 90%;
+        max-width: 500px;
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, #ff6b6b, #ffa500);
+        color: white;
+        padding: 1.5rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .close {
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: white;
+        opacity: 0.8;
+    }
+
+    .close:hover {
+        opacity: 1;
+    }
+
+    .form-group textarea {
+        width: 100%;
+        padding: 12px 15px;
+        border: 2px solid #e1e5e9;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    .alert {
+        padding: 12px 15px;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+    }
+
+    .alert.success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .alert.error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #666;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .quick-stat {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .quick-stat-number {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #ff6b6b;
+    }
+
+    .quick-stat-label {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+
+    @media (max-width: 768px) {
         .sidebar {
-            position: fixed;
-            left: 0;
-            top: 70px;
-            width: 250px;
-            height: calc(100vh - 70px);
-            background: white;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-            padding: 2rem 0;
-            overflow-y: auto;
-        }
-
-        .sidebar ul {
-            list-style: none;
-        }
-
-        .sidebar a {
-            display: flex;
-            align-items: center;
-            padding: 1rem 2rem;
-            color: #333;
-            text-decoration: none;
-            transition: background 0.3s;
-            gap: 0.5rem;
-        }
-
-        .sidebar a:hover,
-        .sidebar a.active {
-            background: linear-gradient(135deg, #ff6b6b, #ffa500);
-            color: white;
+            transform: translateX(-100%);
         }
 
         .main-content {
-            margin-left: 250px;
-            padding: 2rem;
-        }
-
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-
-        .page-title {
-            font-size: 2rem;
-            color: #333;
-        }
-
-        .filter-section {
-            background: white;
-            padding: 1.5rem 2rem;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
+            margin-left: 0;
         }
 
         .filter-form {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            align-items: end;
+            grid-template-columns: 1fr;
         }
 
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-group label {
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .form-group input,
-        .form-group select {
-            padding: 10px 12px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            transition: border-color 0.3s;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #ff6b6b;
-        }
-
-        .btn {
-            padding: 10px 15px;
-            background: linear-gradient(45deg, #ff6b6b, #ffa500);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 600;
-            transition: transform 0.3s, box-shadow 0.3s;
-            font-size: 0.9rem;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-        }
-
-        .btn-success {
-            background: #28a745;
-        }
-
-        .btn-warning {
-            background: #ffc107;
-            color: #333;
-        }
-
-        .btn-danger {
-            background: #dc3545;
-        }
-
-        .btn-sm {
-            padding: 5px 10px;
-            font-size: 0.8rem;
-        }
-
-        .bookings-table {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-
-        .table-header {
-            background: linear-gradient(135deg, #ff6b6b, #ffa500);
-            color: white;
-            padding: 1.5rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .table-container {
+            overflow-x: auto;
         }
 
         .table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .table th,
-        .table td {
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        .table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #333;
-            position: sticky;
-            top: 0;
-        }
-
-        .table tbody tr:hover {
-            background: #f8f9fa;
-        }
-
-        .booking-code {
-            font-weight: bold;
-            color: #333;
-        }
-
-        .customer-info {
-            line-height: 1.4;
-        }
-
-        .customer-name {
-            font-weight: 600;
-            color: #333;
-        }
-
-        .customer-phone {
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .package-info {
-            line-height: 1.4;
-        }
-
-        .package-name {
-            font-weight: 500;
-            color: #333;
-        }
-
-        .service-badge {
-            display: inline-block;
-            background: #f8f9fa;
-            color: #666;
-            padding: 0.2rem 0.5rem;
-            border-radius: 10px;
-            font-size: 0.7rem;
-            margin-top: 0.25rem;
-        }
-
-        .status-badge {
-            padding: 0.4rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-align: center;
-            min-width: 80px;
-            display: inline-block;
-        }
-
-        /* Enhanced payment summary styles */
-        .payment-summary {
-            text-align: center;
-            line-height: 1.3;
-        }
-
-        .payment-total {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 0.5rem;
-        }
-
-        .payment-breakdown {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-            font-size: 0.85rem;
-        }
-
-        .payment-paid {
-            color: #28a745;
-            font-weight: 600;
-        }
-
-        .payment-pending {
-            color: #ffc107;
-            font-weight: 600;
-        }
-
-        .payment-remaining {
-            color: #dc3545;
-            font-weight: 600;
-        }
-
-        .payment-indicators {
-            display: flex;
-            justify-content: center;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .payment-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 10px;
-        }
-
-        .payment-indicator.pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .payment-indicator.verified {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .payment-indicator.rejected {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background: white;
-            margin: 5% auto;
-            padding: 0;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 500px;
-        }
-
-        .modal-header {
-            background: linear-gradient(135deg, #ff6b6b, #ffa500);
-            color: white;
-            padding: 1.5rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-body {
-            padding: 2rem;
-        }
-
-        .close {
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: white;
-            opacity: 0.8;
-        }
-
-        .close:hover {
-            opacity: 1;
-        }
-
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-            resize: vertical;
-            min-height: 80px;
-        }
-
-        .alert {
-            padding: 12px 15px;
-            margin-bottom: 1rem;
-            border-radius: 8px;
-        }
-
-        .alert.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: #666;
-        }
-
-        .empty-state i {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
+            min-width: 800px;
         }
 
         .quick-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(2, 1fr);
         }
-
-        .quick-stat {
-            background: white;
-            padding: 1rem;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .quick-stat-number {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #ff6b6b;
-        }
-
-        .quick-stat-label {
-            font-size: 0.8rem;
-            color: #666;
-            margin-top: 0.25rem;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-            }
-
-            .main-content {
-                margin-left: 0;
-            }
-
-            .filter-form {
-                grid-template-columns: 1fr;
-            }
-
-            .table-container {
-                overflow-x: auto;
-            }
-
-            .table {
-                min-width: 800px;
-            }
-
-            .quick-stats {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
+    }
     </style>
 </head>
 
@@ -671,15 +770,15 @@ function getBookingStatus($booking)
         </div>
 
         <?php if ($success): ?>
-            <div class="alert success">
-                <i class="fas fa-check-circle"></i> <?php echo $success; ?>
-            </div>
+        <div class="alert success">
+            <i class="fas fa-check-circle"></i> <?php echo $success; ?>
+        </div>
         <?php endif; ?>
 
         <?php if ($error): ?>
-            <div class="alert error">
-                <i class="fas fa-exclamation-circle"></i> <?php echo $error; ?>
-            </div>
+        <div class="alert error">
+            <i class="fas fa-exclamation-circle"></i> <?php echo $error; ?>
+        </div>
         <?php endif; ?>
 
 
@@ -743,144 +842,185 @@ function getBookingStatus($booking)
             </div>
 
             <?php if (empty($bookings)): ?>
-                <div class="empty-state">
-                    <i class="fas fa-calendar-times"></i>
-                    <h3>Tidak Ada Booking</h3>
-                    <p>Belum ada booking yang sesuai dengan filter yang dipilih.</p>
-                </div>
+            <div class="empty-state">
+                <i class="fas fa-calendar-times"></i>
+                <h3>Tidak Ada Booking</h3>
+                <p>Belum ada booking yang sesuai dengan filter yang dipilih.</p>
+            </div>
             <?php else: ?>
-                <div class="table-container">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Kode Booking</th>
-                                <th>Customer</th>
-                                <th>Paket & Layanan</th>
-                                <th>Tanggal Event</th>
-                                <th>Status</th>
-                                <th>Pembayaran</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($bookings as $booking): ?>
-                                <?php
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Kode Booking</th>
+                            <th>Customer</th>
+                            <th>Paket & Layanan</th>
+                            <th>Tanggal Event</th>
+                            <th>Status</th>
+                            <th>Pembayaran</th>
+                            <th>Status Baju</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($bookings as $booking): ?>
+
+                        <?php
                                 $status_info = getBookingStatus($booking);
                                 $remaining_payment = $booking['total_amount'] - $booking['total_paid'];
+                                $dress_status = getDressReturnStatusAdmin($booking);
                                 ?>
-                                <tr>
-                                    <td>
-                                        <div class="booking-code"><?php echo htmlspecialchars($booking['booking_code']); ?>
-                                        </div>
-                                        <small
-                                            style="color: #666;"><?php echo date('d/m/Y', strtotime($booking['created_at'])); ?></small>
-                                    </td>
-                                    <td>
-                                        <div class="customer-info">
-                                            <div class="customer-name">
-                                                <?php echo htmlspecialchars($booking['customer_name']); ?></div>
-                                            <div class="customer-phone">
-                                                <?php echo htmlspecialchars($booking['phone'] ?: '-'); ?></div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="package-info">
-                                            <div class="package-name"><?php echo htmlspecialchars($booking['package_name']); ?>
-                                            </div>
-                                            <div class="service-badge">
-                                                <?php $service_icon = getServiceIcon($booking['service_name']); ?>
-                                                <i class="<?php echo $service_icon; ?>"></i>
-                                                <?php echo htmlspecialchars($booking['service_name']); ?>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div><?php echo date('d/m/Y', strtotime($booking['usage_date'])); ?></div>
-                                    </td>
-                                    <td>
-                                        <span class="status-badge"
-                                            style="background-color: <?php echo $status_info['color']; ?>; color: white;">
-                                            <?php echo $status_info['text']; ?>
+                        <tr>
+                            <td>
+                                <div class="booking-code"><?php echo htmlspecialchars($booking['booking_code']); ?>
+                                </div>
+                                <small
+                                    style="color: #666;"><?php echo date('d/m/Y', strtotime($booking['created_at'])); ?></small>
+                            </td>
+                            <td>
+                                <div class="customer-info">
+                                    <div class="customer-name">
+                                        <?php echo htmlspecialchars($booking['customer_name']); ?></div>
+                                    <div class="customer-phone">
+                                        <?php echo htmlspecialchars($booking['phone'] ?: '-'); ?></div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="package-info">
+                                    <div class="package-name"><?php echo htmlspecialchars($booking['package_name']); ?>
+                                    </div>
+                                    <div class="service-badge">
+                                        <?php $service_icon = getServiceIcon($booking['service_name']); ?>
+                                        <i class="<?php echo $service_icon; ?>"></i>
+                                        <?php echo htmlspecialchars($booking['service_name']); ?>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div><?php echo date('d/m/Y', strtotime($booking['usage_date'])); ?></div>
+                            </td>
+                            <td>
+                                <span class="status-badge"
+                                    style="background-color: <?php echo $status_info['color']; ?>; color: white;">
+                                    <?php echo $status_info['text']; ?>
+                                </span>
+                            </td>
+                            <td>
+                                <?php if ($dress_status): ?>
+                                <div style="text-align: center;">
+                                    <span
+                                        style="background-color: <?php echo $dress_status['color']; ?>; color: white; padding: 0.25rem 0.5rem; border-radius: 10px; font-size: 0.75rem; font-weight: 600;">
+                                        <?php echo $dress_status['text']; ?>
+                                    </span>
+
+                                    <?php if ($dress_status['status'] === 'overdue'): ?>
+                                    <div style="margin-top: 0.25rem;">
+                                        <i class="fas fa-exclamation-triangle"
+                                            style="color: #dc3545; font-size: 0.8rem;"
+                                            title="Baju terlambat dikembalikan!"></i>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                                <?php else: ?>
+                                <div style="text-align: center; color: #ccc; font-size: 0.8rem;">
+                                    -
+                                </div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div class="payment-summary">
+                                    <div class="payment-total"><?php echo formatRupiah($booking['total_amount']); ?>
+                                    </div>
+                                    <div class="payment-breakdown">
+                                        <?php if ($booking['total_paid'] > 0): ?>
+                                        <div class="payment-paid">✓ Dibayar:
+                                            <?php echo formatRupiah($booking['total_paid']); ?></div>
+                                        <?php endif; ?>
+
+                                        <?php if ($booking['pending_amount'] > 0): ?>
+                                        <div class="payment-pending">⏳ Pending:
+                                            <?php echo formatRupiah($booking['pending_amount']); ?></div>
+                                        <?php endif; ?>
+
+                                        <?php if ($remaining_payment > 0): ?>
+                                        <div class="payment-remaining">⚠ Sisa:
+                                            <?php echo formatRupiah($remaining_payment); ?></div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <?php if ($booking['payment_count'] > 0): ?>
+                                    <div class="payment-indicators">
+                                        <?php if ($booking['verified_payments'] > 0): ?>
+                                        <span class="payment-indicator verified">
+                                            <i class="fas fa-check"></i> <?php echo $booking['verified_payments']; ?>
+                                            verified
                                         </span>
-                                    </td>
-                                    <td>
-                                        <div class="payment-summary">
-                                            <div class="payment-total"><?php echo formatRupiah($booking['total_amount']); ?>
-                                            </div>
-                                            <div class="payment-breakdown">
-                                                <?php if ($booking['total_paid'] > 0): ?>
-                                                    <div class="payment-paid">✓ Dibayar:
-                                                        <?php echo formatRupiah($booking['total_paid']); ?></div>
-                                                <?php endif; ?>
+                                        <?php endif; ?>
 
-                                                <?php if ($booking['pending_amount'] > 0): ?>
-                                                    <div class="payment-pending">⏳ Pending:
-                                                        <?php echo formatRupiah($booking['pending_amount']); ?></div>
-                                                <?php endif; ?>
+                                        <?php if ($booking['pending_payments'] > 0): ?>
+                                        <span class="payment-indicator pending">
+                                            <i class="fas fa-clock"></i> <?php echo $booking['pending_payments']; ?>
+                                            pending
+                                        </span>
+                                        <?php endif; ?>
 
-                                                <?php if ($remaining_payment > 0): ?>
-                                                    <div class="payment-remaining">⚠ Sisa:
-                                                        <?php echo formatRupiah($remaining_payment); ?></div>
-                                                <?php endif; ?>
-                                            </div>
+                                        <?php if ($booking['rejected_payments'] > 0): ?>
+                                        <span class="payment-indicator rejected">
+                                            <i class="fas fa-times"></i> <?php echo $booking['rejected_payments']; ?>
+                                            ditolak
+                                        </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="actions">
+                                    <a href="booking_detail.php?id=<?php echo $booking['id']; ?>" class="btn btn-sm">
+                                        <i class="fas fa-eye"></i> Detail
+                                    </a>
 
-                                            <?php if ($booking['payment_count'] > 0): ?>
-                                                <div class="payment-indicators">
-                                                    <?php if ($booking['verified_payments'] > 0): ?>
-                                                        <span class="payment-indicator verified">
-                                                            <i class="fas fa-check"></i> <?php echo $booking['verified_payments']; ?>
-                                                            verified
-                                                        </span>
-                                                    <?php endif; ?>
+                                    <button type="button" class="btn btn-sm btn-warning"
+                                        onclick="updateBookingStatus(<?php echo $booking['id']; ?>, '<?php echo $booking['status']; ?>')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
 
-                                                    <?php if ($booking['pending_payments'] > 0): ?>
-                                                        <span class="payment-indicator pending">
-                                                            <i class="fas fa-clock"></i> <?php echo $booking['pending_payments']; ?>
-                                                            pending
-                                                        </span>
-                                                    <?php endif; ?>
+                                    <?php if ($booking['status'] === 'pending'): ?>
+                                    <button type="button" class="btn btn-sm btn-success"
+                                        onclick="quickConfirm(<?php echo $booking['id']; ?>, '<?php echo htmlspecialchars($booking['booking_code']); ?>')">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <?php endif; ?>
 
-                                                    <?php if ($booking['rejected_payments'] > 0): ?>
-                                                        <span class="payment-indicator rejected">
-                                                            <i class="fas fa-times"></i> <?php echo $booking['rejected_payments']; ?>
-                                                            ditolak
-                                                        </span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="actions">
-                                            <a href="booking_detail.php?id=<?php echo $booking['id']; ?>" class="btn btn-sm">
-                                                <i class="fas fa-eye"></i> Detail
-                                            </a>
+                                    <?php if ($booking['pending_payments'] > 0): ?>
+                                    <button type="button" class="btn btn-sm" style="background: #17a2b8;"
+                                        onclick="window.location.href='booking_detail.php?id=<?php echo $booking['id']; ?>#payments'">
+                                        <i class="fas fa-money-bill"></i> Verifikasi
+                                    </button>
+                                    <?php endif; ?>
 
-                                            <button type="button" class="btn btn-sm btn-warning"
-                                                onclick="updateBookingStatus(<?php echo $booking['id']; ?>, '<?php echo $booking['status']; ?>')">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-
-                                            <?php if ($booking['status'] === 'pending'): ?>
-                                                <button type="button" class="btn btn-sm btn-success"
-                                                    onclick="quickConfirm(<?php echo $booking['id']; ?>, '<?php echo htmlspecialchars($booking['booking_code']); ?>')">
-                                                    <i class="fas fa-check"></i>
-                                                </button>
-                                            <?php endif; ?>
-
-                                            <?php if ($booking['pending_payments'] > 0): ?>
-                                                <button type="button" class="btn btn-sm" style="background: #17a2b8;"
-                                                    onclick="window.location.href='booking_detail.php?id=<?php echo $booking['id']; ?>#payments'">
-                                                    <i class="fas fa-money-bill"></i> Verifikasi
-                                                </button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+                                    <!-- Dress Management Quick Actions - TAMBAHAN BARU -->
+                                    <?php if ($dress_status): ?>
+                                    <?php if ($dress_status['status'] === 'ready_take'): ?>
+                                    <button type="button" class="btn btn-sm" style="background: #2196F3;"
+                                        onclick="quickDressTaken(<?php echo $booking['id']; ?>)" title="Baju Diambil">
+                                        <i class="fas fa-hand-holding"></i>
+                                    </button>
+                                    <?php elseif ($dress_status['status'] === 'should_return' || $dress_status['status'] === 'overdue'): ?>
+                                    <button type="button" class="btn btn-sm" style="background: #4CAF50;"
+                                        onclick="quickDressReturned(<?php echo $booking['id']; ?>)"
+                                        title="Baju Dikembalikan">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                    <?php endif; ?>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
             <?php endif; ?>
         </div>
     </main>
@@ -929,88 +1069,132 @@ function getBookingStatus($booking)
     </div>
 
     <script>
-        function updateBookingStatus(bookingId, currentStatus) {
-            document.getElementById('bookingId').value = bookingId;
-            document.getElementById('bookingStatus').value = currentStatus;
-            document.getElementById('statusModal').style.display = 'block';
+    function updateBookingStatus(bookingId, currentStatus) {
+        document.getElementById('bookingId').value = bookingId;
+        document.getElementById('bookingStatus').value = currentStatus;
+        document.getElementById('statusModal').style.display = 'block';
+    }
+
+    function closeStatusModal() {
+        document.getElementById('statusModal').style.display = 'none';
+        document.getElementById('bookingNotes').value = '';
+    }
+
+    function quickConfirm(bookingId, bookingCode) {
+        if (confirm(`Konfirmasi booking ${bookingCode}?`)) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'update_booking_status';
+
+            const idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'booking_id';
+            idInput.value = bookingId;
+
+            const statusInput = document.createElement('input');
+            statusInput.type = 'hidden';
+            statusInput.name = 'status';
+            statusInput.value = 'confirmed';
+
+            const notesInput = document.createElement('input');
+            notesInput.type = 'hidden';
+            notesInput.name = 'notes';
+            notesInput.value = 'Booking dikonfirmasi oleh admin. Silakan lakukan pembayaran.';
+
+            form.appendChild(actionInput);
+            form.appendChild(idInput);
+            form.appendChild(statusInput);
+            form.appendChild(notesInput);
+            document.body.appendChild(form);
+            form.submit();
         }
+    }
 
-        function closeStatusModal() {
-            document.getElementById('statusModal').style.display = 'none';
-            document.getElementById('bookingNotes').value = '';
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('statusModal');
+        if (event.target === modal) {
+            closeStatusModal();
         }
+    }
 
-        function quickConfirm(bookingId, bookingCode) {
-            if (confirm(`Konfirmasi booking ${bookingCode}?`)) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-
-                const actionInput = document.createElement('input');
-                actionInput.type = 'hidden';
-                actionInput.name = 'action';
-                actionInput.value = 'update_booking_status';
-
-                const idInput = document.createElement('input');
-                idInput.type = 'hidden';
-                idInput.name = 'booking_id';
-                idInput.value = bookingId;
-
-                const statusInput = document.createElement('input');
-                statusInput.type = 'hidden';
-                statusInput.name = 'status';
-                statusInput.value = 'confirmed';
-
-                const notesInput = document.createElement('input');
-                notesInput.type = 'hidden';
-                notesInput.name = 'notes';
-                notesInput.value = 'Booking dikonfirmasi oleh admin. Silakan lakukan pembayaran.';
-
-                form.appendChild(actionInput);
-                form.appendChild(idInput);
-                form.appendChild(statusInput);
-                form.appendChild(notesInput);
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('statusModal');
-            if (event.target === modal) {
-                closeStatusModal();
-            }
-        }
-
-        // Auto-hide alerts
-        setTimeout(function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-                alert.style.opacity = '0';
-                setTimeout(function() {
-                    alert.style.display = 'none';
-                }, 300);
-            });
-        }, 5000);
-
-        // Auto-refresh if there are pending payments
-        setInterval(function() {
-            if (document.querySelectorAll('.payment-indicator.pending').length > 0) {
-                location.reload();
-            }
-        }, 300000); // 5 minutes
-
-        // Highlight rows with pending payments
-        document.addEventListener('DOMContentLoaded', function() {
-            const pendingRows = document.querySelectorAll('.payment-indicator.pending');
-            pendingRows.forEach(function(indicator) {
-                const row = indicator.closest('tr');
-                if (row) {
-                    row.style.borderLeft = '4px solid #ffc107';
-                    row.style.backgroundColor = '#fffbf0';
-                }
-            });
+    // Auto-hide alerts
+    setTimeout(function() {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            alert.style.opacity = '0';
+            setTimeout(function() {
+                alert.style.display = 'none';
+            }, 300);
         });
+    }, 5000);
+
+    // Auto-refresh if there are pending payments
+    setInterval(function() {
+        if (document.querySelectorAll('.payment-indicator.pending').length > 0) {
+            location.reload();
+        }
+    }, 300000); // 5 minutes
+
+    // Highlight rows with pending payments
+    document.addEventListener('DOMContentLoaded', function() {
+        const pendingRows = document.querySelectorAll('.payment-indicator.pending');
+        pendingRows.forEach(function(indicator) {
+            const row = indicator.closest('tr');
+            if (row) {
+                row.style.borderLeft = '4px solid #ffc107';
+                row.style.backgroundColor = '#fffbf0';
+            }
+        });
+    });
+
+    function quickDressTaken(bookingId) {
+        if (confirm('Konfirmasi bahwa customer telah mengambil baju pengantin?')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'dress_taken';
+
+            const idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'booking_id';
+            idInput.value = bookingId;
+
+            form.appendChild(actionInput);
+            form.appendChild(idInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    function quickDressReturned(bookingId) {
+        if (confirm('Konfirmasi bahwa customer telah mengembalikan baju pengantin?')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'dress_returned';
+
+            const idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'booking_id';
+            idInput.value = bookingId;
+
+            form.appendChild(actionInput);
+            form.appendChild(idInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
     </script>
 </body>
 

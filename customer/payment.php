@@ -9,7 +9,8 @@ requireLogin();
 $db = getDB();
 
 $booking_id = isset($_GET['booking']) ? (int)$_GET['booking'] : 0;
-$auto_redirect = isset($_GET['auto']) ? true : false; // NEW: Auto redirect from booking
+$is_return_payment = isset($_GET['return']) ? true : false;
+$auto_redirect = isset($_GET['auto']) ? true : false;
 
 if (!$booking_id) {
     header('Location: bookings.php');
@@ -121,6 +122,33 @@ if ($_POST) {
                             $success = "Pembayaran DP berhasil disubmit dan menunggu verifikasi admin.";
                         } else {
                             $success = "Pembayaran berhasil disubmit dan menunggu verifikasi admin.";
+                        }
+
+                        // TAMBAHAN: Jika ini pembayaran saat return dan baju pengantin
+                        if ($is_return_payment && $booking['service_type'] === 'Baju Pengantin') {
+                            // Cek apakah pembayaran sudah lunas
+                            if ($new_total >= $booking['total_amount']) {
+                                // Update booking notes untuk menandai baju dikembalikan dan lunas
+                                $current_notes = $booking['notes'] ?? '';
+                                $return_date = date('d/m/Y H:i');
+                                $return_note = "\n[DRESS_RETURNED] Baju pengantin dikembalikan bersamaan dengan pelunasan pada $return_date.";
+
+                                $stmt = $db->prepare("UPDATE bookings SET notes = CONCAT(COALESCE(notes, ''), ?), status = 'completed', updated_at = NOW() WHERE id = ?");
+                                $stmt->execute([$return_note, $booking_id]);
+
+                                $success = "Pembayaran lunas dan pengembalian baju berhasil dicatat! Terima kasih.";
+                            } else {
+                                $success = "Pembayaran berhasil disubmit. Anda masih bisa melunasi sisa saat mengembalikan baju.";
+                            }
+                        } else {
+                            // Kode success message yang sudah ada
+                            if ($new_total >= $booking['total_amount']) {
+                                $success = "Pembayaran lunas berhasil disubmit! Admin akan memverifikasi dalam 1x24 jam.";
+                            } elseif ($total_paid == 0 && $amount >= $booking['down_payment']) {
+                                $success = "Pembayaran DP berhasil disubmit dan menunggu verifikasi admin.";
+                            } else {
+                                $success = "Pembayaran berhasil disubmit dan menunggu verifikasi admin.";
+                            }
                         }
 
                         // Refresh payment data - PERBAIKAN: Query yang benar
@@ -737,6 +765,13 @@ if ($total_paid == 0) {
             </div>
             <div class="booking-package"><?php echo htmlspecialchars($booking['package_name']); ?></div>
 
+            <?php if ($is_return_payment): ?>
+                <div
+                    style="background: rgba(255, 255, 255, 0.2); padding: 0.5rem 1rem; border-radius: 20px; margin-top: 1rem; font-size: 0.9rem;">
+                    <i class="fas fa-undo"></i> Pembayaran saat Pengembalian Baju
+                </div>
+            <?php endif; ?>
+
             <div class="payment-amount">
                 <div class="amount-item">
                     <div class="amount-value"><?php echo formatRupiah($booking['total_amount']); ?></div>
@@ -1011,6 +1046,7 @@ if ($total_paid == 0) {
             const amount = parseFloat(document.getElementById('amount').value);
             const maxAmount = <?php echo $remaining_payment; ?>;
             const minAmount = <?php echo $total_paid == 0 ? $minimum_payment : 1; ?>;
+            const isReturnPayment = <?php echo $is_return_payment ? 'true' : 'false'; ?>;
 
             if (amount <= 0) {
                 e.preventDefault();
@@ -1031,28 +1067,32 @@ if ($total_paid == 0) {
             }
 
             // Determine payment type for confirmation
-            let paymentTypeText = '';
+            let confirmMessage = '';
             const totalAmount = <?php echo $booking['total_amount']; ?>;
             const totalPaid = <?php echo $total_paid; ?>;
-            const dpAmount = <?php echo $booking['down_payment']; ?>;
-            const fiftyPercent = <?php echo $fifty_percent_payment; ?>;
-
             const newTotal = totalPaid + amount;
 
-            if (newTotal >= totalAmount) {
-                paymentTypeText = 'pembayaran lunas';
-            } else if (totalPaid == 0 && amount >= dpAmount) {
-                if (amount >= fiftyPercent) {
-                    paymentTypeText = 'pembayaran 50%';
+            if (isReturnPayment) {
+                if (newTotal >= totalAmount) {
+                    confirmMessage =
+                        `Anda akan melakukan pelunasan sebesar ${formatRupiah(amount)} sekaligus mengembalikan baju pengantin. Apakah Anda yakin?`;
                 } else {
-                    paymentTypeText = 'pembayaran DP';
+                    confirmMessage =
+                        `Anda akan membayar ${formatRupiah(amount)} saat pengembalian baju. Apakah Anda yakin?`;
                 }
             } else {
-                paymentTypeText = 'pembayaran cicilan';
+                // Konfirmasi message yang sudah ada
+                let paymentTypeText = '';
+                if (newTotal >= totalAmount) {
+                    paymentTypeText = 'pembayaran lunas';
+                } else if (totalPaid == 0 && amount >= <?php echo $booking['down_payment']; ?>) {
+                    paymentTypeText = 'pembayaran DP';
+                } else {
+                    paymentTypeText = 'pembayaran cicilan';
+                }
+                confirmMessage =
+                    `Anda akan melakukan ${paymentTypeText} sebesar ${formatRupiah(amount)}. Apakah Anda yakin?`;
             }
-
-            const confirmMessage =
-                `Anda akan melakukan ${paymentTypeText} sebesar ${formatRupiah(amount)}. Apakah Anda yakin?`;
 
             if (!confirm(confirmMessage)) {
                 e.preventDefault();

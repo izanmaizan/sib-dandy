@@ -119,6 +119,46 @@ if ($_POST) {
                     }
                 }
                 break;
+
+            case 'dress_taken':
+                $booking_id = (int)$_POST['booking_id'];
+
+                $stmt = $db->prepare("SELECT notes FROM bookings WHERE id = ?");
+                $stmt->execute([$booking_id]);
+                $current_notes = $stmt->fetch(PDO::FETCH_ASSOC)['notes'] ?? '';
+
+                $take_date = date('d/m/Y H:i');
+                $new_notes = $current_notes . "\n[DRESS_TAKEN] Baju pengantin diambil customer pada $take_date.";
+
+                $stmt = $db->prepare("UPDATE bookings SET notes = ?, updated_at = NOW() WHERE id = ?");
+                if ($stmt->execute([$new_notes, $booking_id])) {
+                    $success = "Status pengambilan baju berhasil dicatat!";
+                } else {
+                    $error = "Gagal mencatat pengambilan baju!";
+                }
+                break;
+
+            case 'dress_returned':
+                $booking_id = (int)$_POST['booking_id'];
+
+                $stmt = $db->prepare("SELECT notes, status FROM bookings WHERE id = ?");
+                $stmt->execute([$booking_id]);
+                $booking_data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                $current_notes = $booking_data['notes'] ?? '';
+                $return_date = date('d/m/Y H:i');
+                $new_notes = $current_notes . "\n[DRESS_RETURNED] Baju pengantin dikembalikan pada $return_date (dicatat oleh admin).";
+
+                // Set status to completed if not already
+                $new_status = ($booking_data['status'] !== 'completed') ? 'completed' : $booking_data['status'];
+
+                $stmt = $db->prepare("UPDATE bookings SET notes = ?, status = ?, updated_at = NOW() WHERE id = ?");
+                if ($stmt->execute([$new_notes, $new_status, $booking_id])) {
+                    $success = "Pengembalian baju berhasil dicatat dan booking diselesaikan!";
+                } else {
+                    $error = "Gagal mencatat pengembalian baju!";
+                }
+                break;
         }
     }
 }
@@ -864,6 +904,65 @@ function getAdminBookingStatusIndonesia($status, $total_paid, $down_payment, $to
             <?php endif; ?>
         </div>
 
+        <!-- Dress Management Buttons - TAMBAHAN BARU -->
+        <?php if ($booking['service_name'] === 'Baju Pengantin'): ?>
+            <div style="background: #e3f2fd; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;">
+                <h4 style="color: #1565c0; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-tshirt"></i> Manajemen Baju Pengantin
+                </h4>
+
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <?php
+                    $dress_taken = !empty($booking['notes']) && strpos($booking['notes'], '[DRESS_TAKEN]') !== false;
+                    $dress_returned = !empty($booking['notes']) && strpos($booking['notes'], '[DRESS_RETURNED]') !== false;
+                    ?>
+
+                    <?php if (!$dress_taken && $total_paid >= $booking['down_payment']): ?>
+                        <button type="button" class="btn" onclick="dressTaken(<?php echo $booking['id']; ?>)"
+                            style="background: #2196F3;">
+                            <i class="fas fa-hand-holding"></i> Baju Diambil Customer
+                        </button>
+                    <?php endif; ?>
+
+                    <?php if ($dress_taken && !$dress_returned): ?>
+                        <button type="button" class="btn" onclick="dressReturned(<?php echo $booking['id']; ?>)"
+                            style="background: #4CAF50;">
+                            <i class="fas fa-undo"></i> Baju Dikembalikan
+                        </button>
+                    <?php endif; ?>
+
+                    <?php if ($dress_returned): ?>
+                        <div
+                            style="background: #d4edda; color: #155724; padding: 0.5rem 1rem; border-radius: 5px; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-check-circle"></i> Baju Sudah Dikembalikan
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Status Timeline untuk Admin -->
+                <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #bbdefb;">
+                    <h5 style="color: #1565c0; margin-bottom: 1rem;">Status Baju Pengantin:</h5>
+                    <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-<?php echo ($total_paid >= $booking['down_payment']) ? 'check-circle' : 'clock'; ?>"
+                                style="color: <?php echo ($total_paid >= $booking['down_payment']) ? '#4CAF50' : '#FFC107'; ?>;"></i>
+                            <span>DP Dibayar</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-<?php echo $dress_taken ? 'check-circle' : 'clock'; ?>"
+                                style="color: <?php echo $dress_taken ? '#4CAF50' : '#FFC107'; ?>;"></i>
+                            <span>Baju Diambil</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-<?php echo $dress_returned ? 'check-circle' : 'clock'; ?>"
+                                style="color: <?php echo $dress_returned ? '#4CAF50' : '#FFC107'; ?>;"></i>
+                            <span>Baju Dikembalikan</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <!-- Detail Grid -->
         <div class="detail-grid">
             <!-- Detail Booking -->
@@ -1420,15 +1519,63 @@ function getAdminBookingStatusIndonesia($status, $total_paid, $down_payment, $to
             document.getElementById('payment_notes').value = '';
         }
 
+        // Tambahkan fungsi untuk handle error gambar
+        function handleImageError(img, imagePath) {
+            console.log('Image failed to load:', imagePath);
+
+            // Coba path alternatif
+            const alternatePaths = [
+                `uploads/payments/${imagePath}`,
+                `../uploads/payments/${imagePath}`,
+                `../../uploads/payments/${imagePath}`,
+                `payments/${imagePath}`
+            ];
+
+            let currentIndex = 0;
+
+            function tryNextPath() {
+                if (currentIndex < alternatePaths.length) {
+                    img.src = alternatePaths[currentIndex];
+                    currentIndex++;
+                } else {
+                    // Jika semua path gagal, tampilkan pesan error
+                    img.parentElement.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #666;">
+                    <i class="fas fa-image" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <h4>Bukti Pembayaran Tidak Dapat Ditampilkan</h4>
+                    <p>File: ${imagePath}</p>
+                    <p style="font-size: 0.9rem; margin-top: 1rem;">
+                        Kemungkinan file telah dipindah atau dihapus dari server.
+                    </p>
+                </div>
+            `;
+                }
+            }
+
+            img.onerror = tryNextPath;
+            tryNextPath();
+        }
+
         function viewPaymentProof(imagePath) {
             document.getElementById('proofModal').style.display = 'block';
+
+            // Cek path gambar yang benar - sesuaikan dengan struktur folder Anda
+            const imageSrc = `../uploads/payments/${imagePath}`;
+
             document.getElementById('proofModalContent').innerHTML = `
-                <img src="../uploads/payments/${imagePath}" 
-                     style="max-width: 100%; height: auto; border-radius: 8px;" 
-                     alt="Bukti Pembayaran"
-                     onerror="this.src='data:image/svg+xml,<svg xmlns=\\"http://www.w3.org/2000/svg\\" viewBox=\\"0 0 400 300\\"><rect fill=\\"%23f8f9fa\\" width=\\"400\\" height=\\"300\\"/><text x=\\"200\\" y=\\"150\\" text-anchor=\\"middle\\" fill=\\"%23666\\">Gambar tidak tersedia</text></svg>'">
-            `;
+        <div style="text-align: center;">
+            <img src="${imageSrc}" 
+                 style="max-width: 100%; max-height: 70vh; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" 
+                 alt="Bukti Pembayaran"
+                 onload="console.log('Image loaded successfully: ${imageSrc}')"
+                 onerror="handleImageError(this, '${imagePath}')">
+            <div style="margin-top: 1rem; color: #666; font-size: 0.9rem;">
+                <strong>File:</strong> ${imagePath}
+            </div>
+        </div>
+    `;
         }
+
 
         function closeProofModal() {
             document.getElementById('proofModal').style.display = 'none';
@@ -1600,6 +1747,50 @@ function getAdminBookingStatusIndonesia($status, $total_paid, $down_payment, $to
             tooltip.style.opacity = '0';
             setTimeout(() => tooltip.remove(), 300);
         }, 5000);
+
+        function dressTaken(bookingId) {
+            if (confirm('Konfirmasi bahwa customer telah mengambil baju pengantin?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+
+                const actionInput = document.createElement('input');
+                actionInput.type = 'hidden';
+                actionInput.name = 'action';
+                actionInput.value = 'dress_taken';
+
+                const idInput = document.createElement('input');
+                idInput.type = 'hidden';
+                idInput.name = 'booking_id';
+                idInput.value = bookingId;
+
+                form.appendChild(actionInput);
+                form.appendChild(idInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function dressReturned(bookingId) {
+            if (confirm('Konfirmasi bahwa customer telah mengembalikan baju pengantin?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+
+                const actionInput = document.createElement('input');
+                actionInput.type = 'hidden';
+                actionInput.name = 'action';
+                actionInput.value = 'dress_returned';
+
+                const idInput = document.createElement('input');
+                idInput.type = 'hidden';
+                idInput.name = 'booking_id';
+                idInput.value = bookingId;
+
+                form.appendChild(actionInput);
+                form.appendChild(idInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
     </script>
 </body>
 
