@@ -3,8 +3,8 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jun 13, 2025 at 06:24 AM
--- Server version: 8.4.3
+-- Generation Time: Jul 03, 2025 at 09:13 AM
+-- Server version: 8.0.30
 -- PHP Version: 8.3.16
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -60,7 +60,10 @@ INSERT INTO `bookings` (`id`, `booking_code`, `user_id`, `package_id`, `service_
 (7, 'BK202506080741', 2, 9, 'Baju Pengantin', '2025-06-08', '2025-06-12', 'Kota Solok', 'Ukuran dress: L\nWarna dress: Merah', 1500000.00, 450000.00, 1050000.00, 'completed', '\n[DRESS_TAKEN] Baju pengantin diambil customer pada 16/06/2025 05:39.', '2025-06-08 05:52:51', '2025-06-16 05:39:37'),
 (8, 'BK202506132872', 3, 2, 'Baju Pengantin', '2025-06-13', '2025-06-15', 'Lubuk Begalung, Padang', 'Ukuran dress: L\nWarna dress: Emas', 1500000.00, 450000.00, 1050000.00, 'paid', 'Booking dikonfirmasi oleh admin. Silakan lakukan pembayaran.\n[DRESS_RETURNED] Baju pengantin dikembalikan pada 16/06/2025 05:36 oleh customer.', '2025-06-13 04:32:04', '2025-06-16 05:36:16'),
 (9, 'BK202506135702', 3, 3, 'Baju Pengantin', '2025-06-13', '2025-06-19', 'Air Tawar', 'Ukuran dress: L\nWarna dress: Merah', 1500000.00, 450000.00, 1050000.00, 'paid', 'Booking dikonfirmasi oleh admin. Silakan lakukan pembayaran.\n[DRESS_RETURNED] Baju pengantin dikembalikan bersamaan dengan pelunasan pada 20/06/2025 05:46.\n[DRESS_TAKEN] Baju pengantin diambil customer pada 20/06/2025 05:49.', '2025-06-13 05:28:43', '2025-06-20 05:49:16'),
-(10, 'BK202506130918', 3, 9, 'Baju Pengantin', '2025-06-13', '2025-06-21', '', 'Ukuran dress: L\nWarna dress: Kuning', 1500000.00, 450000.00, 1050000.00, 'paid', 'Booking dikonfirmasi oleh admin. Silakan lakukan pembayaran.\n[DRESS_TAKEN] Baju pengantin diambil customer pada 13/06/2025 06:02.\n[DRESS_RETURNED] Baju pengantin dikembalikan bersamaan dengan pelunasan pada 25/06/2025 06:22.', '2025-06-13 05:51:57', '2025-06-25 06:22:37');
+(10, 'BK202506130918', 3, 9, 'Baju Pengantin', '2025-06-13', '2025-06-21', '', 'Ukuran dress: L\nWarna dress: Kuning', 1500000.00, 450000.00, 1050000.00, 'paid', 'Booking dikonfirmasi oleh admin. Silakan lakukan pembayaran.\n[DRESS_TAKEN] Baju pengantin diambil customer pada 13/06/2025 06:02.\n[DRESS_RETURNED] Baju pengantin dikembalikan bersamaan dengan pelunasan pada 25/06/2025 06:22.', '2025-06-13 05:51:57', '2025-06-25 06:22:37'),
+(11, 'BK202507031661', 2, 6, 'Makeup Pengantin', '2025-07-03', '2025-07-07', 'simpang rumbio', 'Style makeup: Tradisional', 850000.00, 255000.00, 595000.00, 'paid', 'Booking dikonfirmasi oleh admin. Silakan lakukan pembayaran.', '2025-07-03 04:49:48', '2025-07-03 04:51:29'),
+(12, 'BK202507031342', 2, 7, 'Makeup Pengantin', '2025-07-03', '2025-07-09', 'simpang rumbio', 'Style makeup: Natural', 1200000.00, 360000.00, 840000.00, 'paid', 'Booking dikonfirmasi oleh admin. Silakan lakukan pembayaran.', '2025-07-03 04:52:04', '2025-07-03 04:53:15'),
+(13, 'BK202507037057', 2, 8, 'Makeup Pengantin', '2025-07-03', '2025-07-04', '', 'Style makeup: Bold', 750000.00, 225000.00, 525000.00, 'confirmed', 'Booking dikonfirmasi oleh admin. Silakan lakukan pembayaran.', '2025-07-03 08:45:39', '2025-07-03 09:10:13');
 
 -- --------------------------------------------------------
 
@@ -160,7 +163,9 @@ INSERT INTO `payments` (`id`, `booking_id`, `payment_date`, `amount`, `payment_m
 (12, 9, '2025-06-16', 750000.00, 'transfer', 'payment_1750052617_9.jpeg', 'verified', '', '2025-06-16 05:43:37'),
 (13, 9, '2025-06-20', 750000.00, 'transfer', 'payment_1750398418_9.jpeg', 'verified', '', '2025-06-20 05:46:58'),
 (14, 10, '2025-06-13', 450000.00, 'transfer', 'payment_1749794006_10.jpg', 'verified', '', '2025-06-13 05:53:26'),
-(15, 10, '2025-06-25', 1050000.00, 'transfer', 'payment_1750832531_10.jpeg', 'verified', '', '2025-06-25 06:22:11');
+(15, 10, '2025-06-25', 1050000.00, 'transfer', 'payment_1750832531_10.jpeg', 'verified', '', '2025-06-25 06:22:11'),
+(16, 11, '2025-07-03', 850000.00, 'transfer', 'payment_1751518261_11.png', 'verified', '', '2025-07-03 04:51:01'),
+(17, 12, '2025-07-03', 600000.00, 'transfer', 'payment_1751518363_12.png', 'verified', '', '2025-07-03 04:52:43');
 
 -- --------------------------------------------------------
 
@@ -240,7 +245,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `bookings`
 --
 ALTER TABLE `bookings`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `gallery`
@@ -258,7 +263,7 @@ ALTER TABLE `packages`
 -- AUTO_INCREMENT for table `payments`
 --
 ALTER TABLE `payments`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `users`

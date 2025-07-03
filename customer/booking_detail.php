@@ -888,7 +888,7 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                     </div>
 
                     <!-- Payment Options -->
-                    <?php if ($booking['status'] === 'confirmed' && $remaining_payment > 0): ?>
+                    <?php if ($booking['status'] === 'confirmed' || 'down_payment' && $remaining_payment > 0): ?>
                     <div class="payment-actions">
                         <a href="payment.php?booking=<?php echo $booking['id']; ?>" class="payment-option">
                             <div class="payment-option-header">
