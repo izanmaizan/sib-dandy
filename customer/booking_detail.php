@@ -179,6 +179,11 @@ function getPaymentStatus($booking, $total_paid)
 }
 
 $payment_status_info = getPaymentStatus($booking, $total_paid);
+
+// Helper function untuk mengecek notes dengan aman
+function checkNotes($notes, $search_string) {
+    return ($notes !== null && strpos($notes, $search_string) !== false);
+}
 ?>
 
 <!DOCTYPE html>
@@ -884,11 +889,15 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                         <?php endif; ?>
                         <div class="payment-item">
                             <span class="payment-label">Sisa Pembayaran:</span>
+                            <span class="payment-value"
+                                style="color: <?php echo ($remaining_payment > 0) ? '#dc3545' : '#28a745'; ?>;">
+                                <?php echo formatRupiah($remaining_payment); ?>
+                            </span>
                         </div>
                     </div>
 
                     <!-- Payment Options -->
-                    <?php if ($booking['status'] === 'confirmed' || 'down_payment' && $remaining_payment > 0): ?>
+                    <?php if ($booking['status'] === 'confirmed' && $remaining_payment > 0): ?>
                     <div class="payment-actions">
                         <a href="payment.php?booking=<?php echo $booking['id']; ?>" class="payment-option">
                             <div class="payment-option-header">
@@ -910,7 +919,7 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                     </div>
                     <?php endif; ?>
 
-                    <!-- Return Dress Section - TAMBAHAN BARU -->
+                    <!-- Return Dress Section - TAMBAHAN BARU dengan fix strpos() -->
                     <?php
                     // Cek apakah ini booking baju pengantin dan sudah selesai event
                     $show_return_section = false;
@@ -922,9 +931,9 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                         $event_date = strtotime($booking['usage_date']);
                         $today = time();
 
-                        // Cek status pengembalian dari notes
-                        $dress_taken = strpos($booking['notes'], '[DRESS_TAKEN]') !== false;
-                        $dress_returned = strpos($booking['notes'], '[DRESS_RETURNED]') !== false;
+                        // Cek status pengembalian dari notes dengan fungsi helper yang aman
+                        $dress_taken = checkNotes($booking['notes'], '[DRESS_TAKEN]');
+                        $dress_returned = checkNotes($booking['notes'], '[DRESS_RETURNED]');
 
                         if ($dress_returned) {
                             $return_status = 'returned';
@@ -979,10 +988,6 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                             </div>
 
                             <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
-                                <!-- <button onclick="confirmReturn()" class="btn" style="background: #28a745;">
-                                            <i class="fas fa-check"></i> Konfirmasi Pengembalian Baju
-                                        </button> -->
-
                                 <?php if ($remaining_payment > 0): ?>
                                 <a href="payment.php?booking=<?php echo $booking['id']; ?>&return=1" class="btn"
                                     style="background: #ff9800; color: white;">
@@ -1066,20 +1071,6 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
                                     <?php endif; ?>
                                 </div>
                             </div>
-
-                            <!-- Info Tambahan -->
-                            <!-- <div
-                                    style="margin-top: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #17a2b8;">
-                                    <h6 style="color: #0c5460; margin-bottom: 0.5rem;">
-                                        <i class="fas fa-info-circle"></i> Informasi Penting:
-                                    </h6>
-                                    <ul style="margin: 0; padding-left: 1.5rem; color: #0c5460; font-size: 0.9rem;">
-                                        <li>Baju pengantin harus dikembalikan maksimal 3 hari setelah acara</li>
-                                        <li>Sisa pembayaran bisa dilunasi kapan saja, termasuk saat pengembalian baju</li>
-                                        <li>Pastikan baju dalam kondisi bersih saat dikembalikan</li>
-                                        <li>Hubungi admin jika ada kendala atau pertanyaan</li>
-                                    </ul>
-                                </div> -->
                         </div>
                     </div>
                     <?php endif; ?>
@@ -1159,7 +1150,7 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
 
                             <!-- 4. Pengambilan Baju (khusus baju pengantin) -->
                             <?php if ($booking['service_name'] === 'Baju Pengantin'): ?>
-                            <?php $dress_taken = strpos($booking['notes'], '[DRESS_TAKEN]') !== false; ?>
+                            <?php $dress_taken = checkNotes($booking['notes'], '[DRESS_TAKEN]'); ?>
                             <div
                                 class="timeline-item <?php echo $dress_taken ? 'completed' : (($total_paid >= $booking['down_payment']) ? 'current' : ''); ?>">
                                 <div class="timeline-content">
@@ -1211,7 +1202,7 @@ $payment_status_info = getPaymentStatus($booking, $total_paid);
 
                             <!-- 7. Pengembalian Baju (khusus baju pengantin) -->
                             <?php if ($booking['service_name'] === 'Baju Pengantin'): ?>
-                            <?php $dress_returned = strpos($booking['notes'], '[DRESS_RETURNED]') !== false; ?>
+                            <?php $dress_returned = checkNotes($booking['notes'], '[DRESS_RETURNED]'); ?>
                             <div
                                 class="timeline-item <?php echo $dress_returned ? 'completed' : ($event_passed ? 'current' : ''); ?>">
                                 <div class="timeline-content">
